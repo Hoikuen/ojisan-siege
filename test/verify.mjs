@@ -71,6 +71,15 @@ try {
     econ.afterReject === 0 && econ.towersAfterReject === 2,
     `money=${econ.afterReject} towers=${econ.towersAfterReject}`);
 
+  // ── T1b: スナイパー建設コスト ──
+  const snp = await page.evaluate(() => {
+    const s = window.__game.scene.getScene('GameScene');
+    s.money = 200;
+    s.buildTower(s.spots[2], 'sniper'); // cost 90
+    return { money: s.money, ok: s.towers.some((t) => t.def.name === 'スナイパー') };
+  });
+  check('スナイパー：建設コスト90・タワー追加', snp.money === 110 && snp.ok, `残金=${snp.money}`);
+
   // ── T2: 強化 ──
   const up = await page.evaluate(() => {
     const s = window.__game.scene.getScene('GameScene');
@@ -267,6 +276,23 @@ try {
   });
   check('マップ2へ遷移：mapIndex=1・盤面/ウェーブ再構築',
     m2.idx === 1 && m2.spots > 0 && m2.waves > 0 && m2.name.length > 0, `${m2.name} spots=${m2.spots} waves=${m2.waves}`);
+
+  // ── T9: ゾンビ分裂（死亡時 grunt×2 スポーン）──
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => {
+    const s = window.__game?.scene.getScene('GameScene'); return s?.spots?.length > 0;
+  }, { timeout: 10000 });
+  const zom = await page.evaluate(() => {
+    const s = window.__game.scene.getScene('GameScene');
+    const before = s.enemies.filter((e) => e.alive).length;
+    s.spawnEnemy('zombie', 0);
+    const z = s.enemies[s.enemies.length - 1];
+    s.damageEnemy(z, 9999);
+    const after = s.enemies.filter((e) => e.alive).length;
+    return { before, after, zombieAlive: z.alive };
+  });
+  check('ゾンビ：死亡時にgrunt×2スポーン', !zom.zombieAlive && zom.after === zom.before + 2,
+    `alive: ${zom.before}→${zom.after} zombieAlive=${zom.zombieAlive}`);
 
   // ── コンソール/例外 ──
   check('コンソール：エラーなし', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '));

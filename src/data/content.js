@@ -5,10 +5,12 @@
 // hp:体力 / speed:px毎秒 / reward:撃破で得る金 / leak:漏れたら減るライフ
 // size:見た目の一辺(px) / color:プレースホルダー色
 export const ENEMIES = {
-  grunt:  { name: 'チビおじ',   hp: 10,  speed: 88,  reward: 5,  leak: 1, size: 26, color: 0x5b8def },
-  runner: { name: 'いそぎおじ', hp: 6,   speed: 185, reward: 4,  leak: 1, size: 20, color: 0x46c98b },
-  brute:  { name: 'ごりおじ',   hp: 50,  speed: 54,  reward: 16, leak: 3, size: 36, color: 0xc56b3a },
-  boss:   { name: 'ボスおじ',   hp: 400, speed: 40,  reward: 95, leak: 8, size: 52, color: 0xb05ad0 },
+  grunt:      { name: 'チビおじ',       hp: 10,  speed: 88,  reward: 5,  leak: 1, size: 26, color: 0x5b8def },
+  runner:     { name: 'いそぎおじ',     hp: 6,   speed: 185, reward: 4,  leak: 1, size: 20, color: 0x46c98b },
+  brute:      { name: 'ごりおじ',       hp: 50,  speed: 54,  reward: 16, leak: 3, size: 36, color: 0xc56b3a },
+  boss:       { name: 'ボスおじ',       hp: 400, speed: 40,  reward: 95, leak: 8, size: 52, color: 0xb05ad0 },
+  subashikko: { name: 'すばしっこおじ', hp: 3,   speed: 270, reward: 3,  leak: 1, size: 18, color: 0x3de87a },
+  zombie:     { name: 'ゾンビおじ',     hp: 30,  speed: 65,  reward: 10, leak: 2, size: 32, color: 0x7fbf4d, splits: true },
 };
 
 // ── タワーの種類 ───────────────────────────────────────────
@@ -26,6 +28,11 @@ export const TOWERS = {
     name: '立ち食いそば屋台', kind: 'splash', color: 0xd98a2b, projColor: 0xffd98a,
     cost: 75, range: 100, damage: 3, fireRate: 950, projSpeed: 460, splash: 70,
     maxLevel: 3, up: { cost: 60, damage: 2, range: 10, splash: 12 },
+  },
+  sniper: {
+    name: 'スナイパー', kind: 'single', color: 0x607d8b, projColor: 0xd0e8ff,
+    cost: 90, range: 200, damage: 18, fireRate: 2000, projSpeed: 900, splash: 0,
+    maxLevel: 3, up: { cost: 55, damage: 10, range: 18, splash: 0 },
   },
 };
 

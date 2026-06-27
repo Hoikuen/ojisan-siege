@@ -251,9 +251,9 @@ export default class GameScene extends Phaser.Scene {
   }
 
   // ── 敵 ───────────────────────────────────────────────────
-  spawnEnemy(type) {
+  spawnEnemy(type, startDist = 0) {
     const def = ENEMIES[type];
-    const pos = posAt(this.path, 0);
+    const pos = posAt(this.path, startDist);
     const barW = Math.max(24, def.size);
     const body = this.add.rectangle(pos.x, pos.y, def.size, def.size, def.color)
       .setStrokeStyle(2, 0x10161f, 0.6).setDepth(DEPTH.enemy);
@@ -266,7 +266,7 @@ export default class GameScene extends Phaser.Scene {
       .setOrigin(0, 0.5).setDepth(DEPTH.hpbar);
 
     this.enemies.push({
-      type, def, speed: def.speed, dist: 0, hp: def.hp, maxHp: def.hp,
+      type, def, speed: def.speed, dist: startDist, hp: def.hp, maxHp: def.hp,
       x: pos.x, y: pos.y, alive: true, barW, body, face, hpBg, hpFill,
     });
   }
@@ -279,6 +279,10 @@ export default class GameScene extends Phaser.Scene {
       this.money += enemy.def.reward;
       this.updateHud();
       this.floatText(enemy.x, enemy.y - 10, `+$${enemy.def.reward}`, '#ffd866', 16);
+      if (enemy.def.splits) {
+        this.spawnEnemy('grunt', enemy.dist);
+        this.spawnEnemy('grunt', enemy.dist);
+      }
       this.destroyEnemyGfx(enemy);
       Sfx.kill();
     } else {
@@ -468,25 +472,31 @@ export default class GameScene extends Phaser.Scene {
     this.showRangePreview(spot.x, spot.y, TOWERS.guard.range); // 目安として警備員射程
     const w = 240;
     const x = Phaser.Math.Clamp(spot.x, w / 2 + 10, GAME_W - w / 2 - 10);
-    const y = Phaser.Math.Clamp(spot.y < GAME_H / 2 ? spot.y + 120 : spot.y - 120, 120, GAME_H - 120);
+    const y = Phaser.Math.Clamp(spot.y < GAME_H / 2 ? spot.y + 120 : spot.y - 120, 135, GAME_H - 115);
     this.makeBackdrop();
-    this.addPanelItem(this.add.rectangle(x, y, w, 158, 0x16202c, 0.96)
+    this.addPanelItem(this.add.rectangle(x, y, w, 212, 0x16202c, 0.96)
       .setStrokeStyle(2, 0x4a6076).setDepth(DEPTH.panel));
-    this.addPanelItem(this.add.text(x, y - 62, 'タワーを建てる', {
+    this.addPanelItem(this.add.text(x, y - 84, 'タワーを建てる', {
       fontSize: '18px', fontStyle: 'bold', color: COLORS.text,
     }).setOrigin(0.5).setDepth(DEPTH.panel));
 
-    this.makeButton(x, y - 18, w - 24, 44, TOWERS.guard.color,
+    this.makeButton(x, y - 40, w - 24, 44, TOWERS.guard.color,
       `警備員（単体）  $${TOWERS.guard.cost}`,
       `射程${TOWERS.guard.range} / 威力${TOWERS.guard.damage}`,
       this.money >= TOWERS.guard.cost,
       () => this.buildTower(spot, 'guard'));
 
-    this.makeButton(x, y + 40, w - 24, 44, TOWERS.soba.color,
+    this.makeButton(x, y + 16, w - 24, 44, TOWERS.soba.color,
       `そば屋台（範囲）  $${TOWERS.soba.cost}`,
       `範囲攻撃 / 威力${TOWERS.soba.damage}`,
       this.money >= TOWERS.soba.cost,
       () => this.buildTower(spot, 'soba'));
+
+    this.makeButton(x, y + 72, w - 24, 44, TOWERS.sniper.color,
+      `スナイパー  $${TOWERS.sniper.cost}`,
+      `射程${TOWERS.sniper.range} / 威力${TOWERS.sniper.damage}`,
+      this.money >= TOWERS.sniper.cost,
+      () => this.buildTower(spot, 'sniper'));
   }
 
   openTowerMenu(tower) {

@@ -20,11 +20,13 @@ export const MAPS = [
       [{ type: 'grunt', count: 12, gap: 650 }],
       [
         { type: 'grunt', count: 10, gap: 520 },
-        { type: 'runner', count: 10, gap: 360 },
+        { type: 'subashikko', count: 6, gap: 280 },
+        { type: 'runner', count: 8, gap: 360 },
         { type: 'grunt', count: 6, gap: 520 },
       ],
       [
         { type: 'grunt', count: 14, gap: 430 },
+        { type: 'zombie', count: 3, gap: 1200 },
         { type: 'brute', count: 4, gap: 1050 },
         { type: 'runner', count: 12, gap: 300 },
         { type: 'boss', count: 1, gap: 600 },
@@ -50,13 +52,16 @@ export const MAPS = [
       [{ type: 'grunt', count: 16, gap: 560 }],
       [
         { type: 'grunt', count: 12, gap: 460 },
-        { type: 'runner', count: 12, gap: 320 },
+        { type: 'subashikko', count: 8, gap: 240 },
+        { type: 'runner', count: 10, gap: 320 },
         { type: 'brute', count: 3, gap: 1100 },
         { type: 'grunt', count: 8, gap: 460 },
       ],
       [
         { type: 'grunt', count: 16, gap: 380 },
+        { type: 'zombie', count: 4, gap: 1000 },
         { type: 'brute', count: 5, gap: 900 },
+        { type: 'subashikko', count: 8, gap: 220 },
         { type: 'runner', count: 14, gap: 260 },
         { type: 'boss', count: 2, gap: 1600 },
       ],
