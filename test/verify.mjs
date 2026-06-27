@@ -169,8 +169,9 @@ try {
   }, { timeout: 10000 });
   await page.evaluate(() => {
     const s = window.__game.scene.getScene('GameScene');
+    s.mapIndex = 99;              // 最終マップ扱い → 全制覇でゲームクリア
     s.waveActive = true;          // 最終ウェーブ進行中
-    s.waveStartedCount = 99;      // >= WAVES.length
+    s.waveStartedCount = 99;      // >= waves.length
     s.spawnQueue = [];            // 湧き切った
     s.enemies = [];               // 全滅
   });
@@ -234,6 +235,38 @@ try {
     return { a, b };
   });
   check('ミュート：ボタン表示が🔇⇄🔊で切替', mute.a === '🔇' && mute.b === '🔊', `${mute.a}/${mute.b}`);
+
+  // ── T8: マップ進行（マップクリア→次マップ遷移）──
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => {
+    const s = window.__game?.scene.getScene('GameScene'); return s?.spots?.length > 0;
+  }, { timeout: 10000 });
+  await page.evaluate(() => {
+    const s = window.__game.scene.getScene('GameScene');
+    s.waveActive = true; s.waveStartedCount = 99; s.spawnQueue = []; s.enemies = [];
+  });
+  await sleep(250);
+  const clr = await page.evaluate(() => {
+    const s = window.__game.scene.getScene('GameScene');
+    const texts = s.children.list.filter((o) => o.type === 'Text').map((o) => o.text);
+    return { awaiting: s.awaitingNext, over: s.gameOver, hasClear: texts.some((t) => t.includes('クリア')), idx: s.mapIndex };
+  });
+  check('マップ進行：1面クリアで次マップ待ち（ゲームオーバーにしない）',
+    clr.awaiting && clr.hasClear && !clr.over, `idx=${clr.idx} awaiting=${clr.awaiting}`);
+
+  await page.evaluate(() => {
+    const s = window.__game.scene.getScene('GameScene');
+    s.scene.restart({ mapIndex: s.mapIndex + 1 });
+  });
+  await page.waitForFunction(() => {
+    const s = window.__game?.scene.getScene('GameScene'); return s && s.mapIndex === 1 && s.spots?.length > 0;
+  }, { timeout: 10000 });
+  const m2 = await page.evaluate(() => {
+    const s = window.__game.scene.getScene('GameScene');
+    return { idx: s.mapIndex, name: s.map.name, spots: s.spots.length, waves: s.waves.length };
+  });
+  check('マップ2へ遷移：mapIndex=1・盤面/ウェーブ再構築',
+    m2.idx === 1 && m2.spots > 0 && m2.waves > 0 && m2.name.length > 0, `${m2.name} spots=${m2.spots} waves=${m2.waves}`);
 
   // ── コンソール/例外 ──
   check('コンソール：エラーなし', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '));

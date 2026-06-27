@@ -1,9 +1,7 @@
 import Phaser from 'phaser';
-import {
-  GAME_W, GAME_H, COLORS, START_MONEY, START_LIVES,
-  PATH, ROAD_WIDTH, BUILD_SPOTS,
-} from '../config.js';
-import { ENEMIES, TOWERS, WAVES, WAVE_CLEAR_BONUS } from '../data/content.js';
+import { GAME_W, GAME_H, COLORS } from '../config.js';
+import { ENEMIES, TOWERS, WAVE_CLEAR_BONUS } from '../data/content.js';
+import { MAPS } from '../data/maps.js';
 import { buildPath, posAt } from '../path.js';
 import { Sfx } from '../audio.js';
 
@@ -19,13 +17,20 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
+    // ── マップ選択（restart時に {mapIndex} で受け取る）──
+    const data = this.scene.settings.data || {};
+    this.mapIndex = Math.min(data.mapIndex || 0, MAPS.length - 1);
+    this.map = MAPS[this.mapIndex];
+    this.waves = this.map.waves;
+
     // ── 状態を毎回まっさらに（restartで再create）──
-    this.path = buildPath(PATH);
-    this.money = START_MONEY;
-    this.lives = START_LIVES;
+    this.path = buildPath(this.map.path);
+    this.money = this.map.startMoney;
+    this.lives = this.map.startLives;
     this.waveStartedCount = 0; // これまでに開始したウェーブ数
     this.waveActive = false;
     this.gameOver = false;
+    this.awaitingNext = false;  // マップクリア後、次マップ待ち（updateを止める）
 
     this.enemies = [];
     this.towers = [];
@@ -46,33 +51,35 @@ export default class GameScene extends Phaser.Scene {
 
   // ── 盤面（道・設置スロット）を描く ─────────────────────────
   drawBoard() {
+    const path = this.map.path;
+    const roadWidth = this.map.roadWidth;
     const g = this.add.graphics().setDepth(DEPTH.road);
     // 道（太線）
-    g.lineStyle(ROAD_WIDTH, COLORS.road, 1);
+    g.lineStyle(roadWidth, COLORS.road, 1);
     g.beginPath();
-    g.moveTo(PATH[0][0], PATH[0][1]);
-    for (let i = 1; i < PATH.length; i++) g.lineTo(PATH[i][0], PATH[i][1]);
+    g.moveTo(path[0][0], path[0][1]);
+    for (let i = 1; i < path.length; i++) g.lineTo(path[i][0], path[i][1]);
     g.strokePath();
     // 道の縁（細い明線）で見やすく
     g.lineStyle(2, COLORS.roadEdge, 0.8);
     g.beginPath();
-    g.moveTo(PATH[0][0], PATH[0][1]);
-    for (let i = 1; i < PATH.length; i++) g.lineTo(PATH[i][0], PATH[i][1]);
+    g.moveTo(path[0][0], path[0][1]);
+    for (let i = 1; i < path.length; i++) g.lineTo(path[i][0], path[i][1]);
     g.strokePath();
 
-    // ゴール（右端）マーカー：ここに敵が着くとライフが減る
-    const end = PATH[PATH.length - 1];
-    this.add.rectangle(end[0] - 24, end[1], 10, ROAD_WIDTH + 16, 0xff6b6b, 0.6)
-      .setDepth(DEPTH.road);
-    this.add.text(end[0] - 70, end[1] - ROAD_WIDTH, '🏠', { fontSize: '28px' })
+    // ゴールマーカー：ここに敵が着くとライフが減る
+    const end = path[path.length - 1];
+    const ex = end[0] < 0 ? end[0] + 36 : end[0] - 24; // 画面外端でも見えるよう内側に寄せる
+    this.add.rectangle(ex, end[1], 10, roadWidth + 16, 0xff6b6b, 0.6).setDepth(DEPTH.road);
+    this.add.text(ex - 4, end[1] - roadWidth, '🏠', { fontSize: '28px' })
       .setOrigin(0.5).setDepth(DEPTH.road);
 
     // スタート矢印
-    this.add.text(40, PATH[0][1] - 38, '敵→', { fontSize: '20px', color: COLORS.text })
+    this.add.text(40, path[0][1] - 38, '敵→', { fontSize: '20px', color: COLORS.text })
       .setOrigin(0.5).setDepth(DEPTH.road);
 
     // 設置スロット
-    this.spots = BUILD_SPOTS.map((s) => {
+    this.spots = this.map.spots.map((s) => {
       const pad = this.add.circle(s.x, s.y, 24, COLORS.slot)
         .setStrokeStyle(2, COLORS.slotHover, 0.9)
         .setDepth(DEPTH.slot)
@@ -84,7 +91,7 @@ export default class GameScene extends Phaser.Scene {
       pad.on('pointerout', () => { if (!spot.tower) pad.setFillStyle(COLORS.slot); });
       pad.on('pointerdown', (p, x, y, ev) => {
         if (ev) ev.stopPropagation();
-        if (this.gameOver) return;
+        if (this.gameOver || this.awaitingNext) return;
         Sfx.resume();
         if (spot.tower) this.openTowerMenu(spot.tower);
         else this.openBuildMenu(spot);
@@ -159,11 +166,13 @@ export default class GameScene extends Phaser.Scene {
   updateHud() {
     this.moneyText.setText(`💰 ${this.money}`);
     this.livesText.setText(`❤ ${this.lives}`);
-    this.waveText.setText(`ウェーブ ${Math.min(this.waveStartedCount, WAVES.length)} / ${WAVES.length}`);
+    const mapLabel = `🗺 ${this.map.name}(${this.mapIndex + 1}/${MAPS.length})`;
+    this.waveText.setText(`${mapLabel}  ウェーブ ${Math.min(this.waveStartedCount, this.waves.length)}/${this.waves.length}`);
   }
 
   refreshWaveButton() {
-    const canStart = !this.waveActive && !this.gameOver && this.waveStartedCount < WAVES.length;
+    const canStart = !this.waveActive && !this.gameOver && !this.awaitingNext
+      && this.waveStartedCount < this.waves.length;
     this.waveBtnRect.setVisible(canStart);
     this.waveBtnText.setVisible(canStart);
     if (canStart) {
@@ -181,8 +190,9 @@ export default class GameScene extends Phaser.Scene {
 
   // ── ウェーブ開始・完了 ───────────────────────────────────
   startWave() {
-    if (this.waveActive || this.gameOver || this.waveStartedCount >= WAVES.length) return;
-    const wave = WAVES[this.waveStartedCount];
+    if (this.waveActive || this.gameOver || this.awaitingNext
+      || this.waveStartedCount >= this.waves.length) return;
+    const wave = this.waves[this.waveStartedCount];
     this.spawnQueue = [];
     for (const group of wave) {
       for (let i = 0; i < group.count; i++) this.spawnQueue.push({ type: group.type, delay: group.gap });
@@ -199,8 +209,10 @@ export default class GameScene extends Phaser.Scene {
 
   onWaveComplete() {
     this.waveActive = false;
-    if (this.waveStartedCount >= WAVES.length) {
-      this.showEnd(true);
+    if (this.waveStartedCount >= this.waves.length) {
+      // このマップのウェーブを全て耐えきった
+      if (this.mapIndex >= MAPS.length - 1) this.showEnd(true);  // 最終マップ＝ゲームクリア
+      else this.showMapClear();                                  // 次マップへ
       return;
     }
     const bonus = WAVE_CLEAR_BONUS[this.waveStartedCount - 1] || 0;
@@ -210,6 +222,32 @@ export default class GameScene extends Phaser.Scene {
     }
     this.updateHud();
     this.refreshWaveButton();
+  }
+
+  showMapClear() {
+    this.awaitingNext = true;
+    this.closePanel();
+    this.refreshWaveButton();
+    Sfx.win();
+
+    this.add.rectangle(0, 0, GAME_W, GAME_H, 0x0a0f16, 0.7)
+      .setOrigin(0, 0).setDepth(DEPTH.end);
+    this.add.text(GAME_W / 2, GAME_H / 2 - 70, `${this.map.name} クリア！`, {
+      fontSize: '56px', fontStyle: 'bold', color: '#57c98a',
+    }).setOrigin(0.5).setDepth(DEPTH.end);
+    this.add.text(GAME_W / 2, GAME_H / 2 - 6, `次は「${MAPS[this.mapIndex + 1].name}」`, {
+      fontSize: '24px', color: COLORS.text,
+    }).setOrigin(0.5).setDepth(DEPTH.end);
+
+    const nb = this.add.rectangle(GAME_W / 2, GAME_H / 2 + 70, 240, 56, 0x2e7d4f)
+      .setStrokeStyle(2, 0x57c98a).setDepth(DEPTH.end)
+      .setInteractive({ useHandCursor: true });
+    this.add.text(GAME_W / 2, GAME_H / 2 + 70, '次のマップへ ▶', {
+      fontSize: '24px', fontStyle: 'bold', color: '#ffffff',
+    }).setOrigin(0.5).setDepth(DEPTH.end);
+    nb.on('pointerover', () => nb.setFillStyle(0x39a05f));
+    nb.on('pointerout', () => nb.setFillStyle(0x2e7d4f));
+    nb.on('pointerdown', () => { Sfx.resume(); this.scene.restart({ mapIndex: this.mapIndex + 1 }); });
   }
 
   // ── 敵 ───────────────────────────────────────────────────
@@ -542,29 +580,31 @@ export default class GameScene extends Phaser.Scene {
 
     this.add.rectangle(0, 0, GAME_W, GAME_H, 0x0a0f16, 0.72)
       .setOrigin(0, 0).setDepth(DEPTH.end);
-    this.add.text(GAME_W / 2, GAME_H / 2 - 70, win ? 'クリア！' : 'ゲームオーバー', {
+    this.add.text(GAME_W / 2, GAME_H / 2 - 70, win ? 'ゲームクリア！' : 'ゲームオーバー', {
       fontSize: '64px', fontStyle: 'bold', color: win ? '#57c98a' : '#ff6b6b',
     }).setOrigin(0.5).setDepth(DEPTH.end);
     this.add.text(GAME_W / 2, GAME_H / 2 - 6, win
-      ? '3ウェーブを耐えきった！'
-      : `ライフ0… ウェーブ ${this.waveStartedCount}/${WAVES.length} で陥落`, {
+      ? `全${MAPS.length}マップを守りきった！`
+      : `ライフ0… ${this.map.name} ウェーブ ${this.waveStartedCount}/${this.waves.length} で陥落`, {
       fontSize: '24px', color: COLORS.text,
     }).setOrigin(0.5).setDepth(DEPTH.end);
 
-    const rb = this.add.rectangle(GAME_W / 2, GAME_H / 2 + 70, 200, 56, 0x2e7d4f)
+    // 勝ち＝最初から / 負け＝同じマップをやり直し
+    const retryMap = win ? 0 : this.mapIndex;
+    const rb = this.add.rectangle(GAME_W / 2, GAME_H / 2 + 70, 220, 56, 0x2e7d4f)
       .setStrokeStyle(2, 0x57c98a).setDepth(DEPTH.end)
       .setInteractive({ useHandCursor: true });
-    this.add.text(GAME_W / 2, GAME_H / 2 + 70, 'リトライ ↻', {
+    this.add.text(GAME_W / 2, GAME_H / 2 + 70, win ? 'もう一度 ↻' : 'リトライ ↻', {
       fontSize: '24px', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5).setDepth(DEPTH.end);
     rb.on('pointerover', () => rb.setFillStyle(0x39a05f));
     rb.on('pointerout', () => rb.setFillStyle(0x2e7d4f));
-    rb.on('pointerdown', () => this.scene.restart());
+    rb.on('pointerdown', () => { Sfx.resume(); this.scene.restart({ mapIndex: retryMap }); });
   }
 
   // ── メインループ ─────────────────────────────────────────
   update(time, delta) {
-    if (this.gameOver || this.paused) return;
+    if (this.gameOver || this.paused || this.awaitingNext) return;
     const d = delta * this.gameSpeed;            // 速度倍率（1x/2x）
     const dt = Math.min(d, 50) / 1000;           // 秒（大ジャンプを抑制）
 
