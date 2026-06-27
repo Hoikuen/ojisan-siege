@@ -2,6 +2,8 @@
 
 チビおじさん軍団がわらわら襲来するタワーディフェンス（Kingdom Rush風）。可愛い大量×配置の戦略。
 
+**▶ 遊ぶ（公開URL）: https://hoikuen.github.io/ojisan-siege/**  （main へ push すると自動デプロイ）
+
 - ステータス：**最小ループ実装済み（図形プレースホルダー）**。2マップ・3ウェーブ・タワー2種を遊べる。絵は未実装
 - 設計：docs/GAME_DESIGN.md
 - 進捗・残課題：docs/PROJECT_LOG.md
