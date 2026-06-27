@@ -1,0 +1,10 @@
+import { chromium } from 'playwright-core';
+const b = await chromium.launch({ channel: 'chrome', headless: true });
+const p = await b.newPage();
+const failed = [];
+p.on('requestfailed', r => failed.push('FAILED ' + r.url()));
+p.on('response', r => { if (r.status() >= 400) failed.push(r.status() + ' ' + r.url()); });
+await p.goto('http://localhost:5199/', { waitUntil: 'load' });
+await new Promise(r => setTimeout(r, 1500));
+console.log(failed.join('\n') || '(no failed requests)');
+await b.close();
