@@ -41,7 +41,7 @@ try {
   });
   check('起動：create()完走（HUD/スロット生成）', s0.hasHud && s0.spots === 10, `spots=${s0.spots}`);
   check('起動：canvas生成', s0.canvas);
-  check('初期：money=120 / lives=20 / wave=0', s0.money === 120 && s0.lives === 20 && s0.waveStarted === 0,
+  check('初期：money=100 / lives=20 / wave=0', s0.money === 100 && s0.lives === 20 && s0.waveStarted === 0,
     `money=${s0.money} lives=${s0.lives} wave=${s0.waveStarted}`);
   check('経路：総距離>0', s0.pathTotal > 0, `total=${s0.pathTotal}px`);
 
@@ -54,21 +54,21 @@ try {
   // ── T1: 経済（建設コスト・所持金不足の拒否）──
   const econ = await page.evaluate(() => {
     const s = window.__game.scene.getScene('GameScene');
-    const start = s.money;                       // 120
-    s.buildTower(s.spots[0], 'guard');           // -50 → 70
+    const start = s.money;                       // 100
+    s.buildTower(s.spots[0], 'guard');           // -50 → 50
     const afterG1 = s.money;
-    s.buildTower(s.spots[1], 'guard');           // -50 → 20
+    s.buildTower(s.spots[1], 'guard');           // -50 → 0
     const afterG2 = s.money;
     const towersAfter2 = s.towers.length;
-    s.buildTower(s.spots[2], 'soba');            // cost70 > money20 → 拒否
+    s.buildTower(s.spots[2], 'soba');            // cost75 > money0 → 拒否
     const afterReject = s.money;
     const towersAfterReject = s.towers.length;
     return { start, afterG1, afterG2, towersAfter2, afterReject, towersAfterReject };
   });
-  check('経済：建設で正しく減算（120→70→20）', econ.afterG1 === 70 && econ.afterG2 === 20);
+  check('経済：建設で正しく減算（100→50→0）', econ.afterG1 === 50 && econ.afterG2 === 0);
   check('経済：2基建設でtowers=2', econ.towersAfter2 === 2, `towers=${econ.towersAfter2}`);
   check('経済：所持金不足の建設は拒否（金もtowerも不変）',
-    econ.afterReject === 20 && econ.towersAfterReject === 2,
+    econ.afterReject === 0 && econ.towersAfterReject === 2,
     `money=${econ.afterReject} towers=${econ.towersAfterReject}`);
 
   // ── T2: 強化 ──
@@ -183,6 +183,57 @@ try {
   check('クリア：全ウェーブ突破でクリア表示', win.gameOver && win.hasWin,
     `gameOver=${win.gameOver} overlay=${win.hasWin}`);
   await page.screenshot({ path: '/tmp/ojisan-siege-clear.png' });
+
+  // ── T7: コントロール（速度・一時停止・売却・ミュート）──新規機能 ──
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => {
+    const s = window.__game?.scene.getScene('GameScene'); return s?.spots?.length === 10;
+  }, { timeout: 10000 });
+
+  const spd = await page.evaluate(() => {
+    const s = window.__game.scene.getScene('GameScene');
+    const a = s.gameSpeed; s.toggleSpeed(); const b = s.gameSpeed; s.toggleSpeed(); const c = s.gameSpeed;
+    return { a, b, c };
+  });
+  check('速度：1x→2x→1x 切替', spd.a === 1 && spd.b === 2 && spd.c === 1, `${spd.a}/${spd.b}/${spd.c}`);
+
+  const sell = await page.evaluate(() => {
+    const s = window.__game.scene.getScene('GameScene');
+    s.money = 200;
+    s.buildTower(s.spots[0], 'guard');
+    const before = s.money; const tw = s.towers.length; const t = s.spots[0].tower;
+    const refund = s.sellValueOf(t);
+    s.sellTower(t);
+    return { before, after: s.money, refund, twBefore: tw, twAfter: s.towers.length, freed: !s.spots[0].tower };
+  });
+  check('売却：払い戻し＋スロット解放＋tower数減',
+    sell.after === sell.before + sell.refund && sell.twAfter === sell.twBefore - 1 && sell.freed,
+    `+$${sell.refund}`);
+
+  await page.evaluate(() => {
+    const s = window.__game.scene.getScene('GameScene');
+    s.spawnEnemy('grunt');
+    s._te = s.enemies[s.enemies.length - 1];
+    s.paused = true; s._d0 = s._te.dist;
+  });
+  await sleep(400);
+  const pausedMove = await page.evaluate(() => {
+    const s = window.__game.scene.getScene('GameScene');
+    const moved = s._te.dist - s._d0; s.paused = false; s._d1 = s._te.dist; return moved;
+  });
+  await sleep(400);
+  const resumedMove = await page.evaluate(() => {
+    const s = window.__game.scene.getScene('GameScene'); return s._te.dist - s._d1;
+  });
+  check('一時停止：停止中は敵が動かない', Math.abs(pausedMove) < 0.5, `Δ=${pausedMove.toFixed(2)}`);
+  check('再開：解除で敵が動く', resumedMove > 0, `Δ=${resumedMove.toFixed(2)}`);
+
+  const mute = await page.evaluate(() => {
+    const s = window.__game.scene.getScene('GameScene');
+    s.toggleMute(); const a = s.muteBtn.text.text; s.toggleMute(); const b = s.muteBtn.text.text;
+    return { a, b };
+  });
+  check('ミュート：ボタン表示が🔇⇄🔊で切替', mute.a === '🔇' && mute.b === '🔊', `${mute.a}/${mute.b}`);
 
   // ── コンソール/例外 ──
   check('コンソール：エラーなし', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '));

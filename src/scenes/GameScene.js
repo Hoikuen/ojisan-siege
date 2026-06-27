@@ -5,6 +5,7 @@ import {
 } from '../config.js';
 import { ENEMIES, TOWERS, WAVES, WAVE_CLEAR_BONUS } from '../data/content.js';
 import { buildPath, posAt } from '../path.js';
+import { Sfx } from '../audio.js';
 
 // 深度（描画/入力の重なり順）
 const DEPTH = {
@@ -35,6 +36,9 @@ export default class GameScene extends Phaser.Scene {
 
     this.panelItems = [];
     this.rangePreview = null;
+
+    this.gameSpeed = 1;   // 1x / 2x
+    this.paused = false;
 
     this.drawBoard();
     this.buildHud();
@@ -81,6 +85,7 @@ export default class GameScene extends Phaser.Scene {
       pad.on('pointerdown', (p, x, y, ev) => {
         if (ev) ev.stopPropagation();
         if (this.gameOver) return;
+        Sfx.resume();
         if (spot.tower) this.openTowerMenu(spot.tower);
         else this.openBuildMenu(spot);
       });
@@ -99,23 +104,56 @@ export default class GameScene extends Phaser.Scene {
     this.waveText = this.add.text(400, 11, '', { ...st, color: COLORS.text }).setDepth(DEPTH.hud);
 
     this.hintText = this.add.text(GAME_W / 2, GAME_H - 26,
-      'スロット（＋）をクリックしてタワーを建設 → ウェーブ開始', {
-        fontSize: '18px', color: '#9fb3c8',
+      'スロット（＋）→タワー建設／タワーをクリック→強化・売却　右上＝速度・一時停止・音', {
+        fontSize: '17px', color: '#9fb3c8',
       }).setOrigin(0.5).setDepth(DEPTH.hud);
 
-    // ウェーブ開始ボタン
-    this.waveBtnRect = this.add.rectangle(GAME_W - 130, 23, 220, 34, 0x2e7d4f)
+    // 右側コントロール（速度・一時停止・ミュート）
+    this.speedBtn = this.makeIconButton(GAME_W - 36, '1x', () => this.toggleSpeed());
+    this.pauseBtn = this.makeIconButton(GAME_W - 74, '⏸', () => this.togglePause());
+    this.muteBtn = this.makeIconButton(GAME_W - 112, '🔊', () => this.toggleMute());
+
+    // ウェーブ開始ボタン（コントロールの左）
+    this.waveBtnRect = this.add.rectangle(GAME_W - 250, 23, 240, 34, 0x2e7d4f)
       .setStrokeStyle(2, 0x57c98a).setDepth(DEPTH.hud)
       .setInteractive({ useHandCursor: true });
-    this.waveBtnText = this.add.text(GAME_W - 130, 23, '', {
+    this.waveBtnText = this.add.text(GAME_W - 250, 23, '', {
       fontSize: '18px', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5).setDepth(DEPTH.hud);
     this.waveBtnRect.on('pointerover', () => this.waveBtnRect.setFillStyle(0x39A05f));
     this.waveBtnRect.on('pointerout', () => this.waveBtnRect.setFillStyle(0x2e7d4f));
-    this.waveBtnRect.on('pointerdown', () => this.startWave());
+    this.waveBtnRect.on('pointerdown', () => { Sfx.resume(); this.startWave(); });
 
     this.updateHud();
     this.refreshWaveButton();
+  }
+
+  makeIconButton(cx, label, cb) {
+    const rect = this.add.rectangle(cx, 23, 32, 32, 0x2f3e52)
+      .setStrokeStyle(2, 0x4a6076).setDepth(DEPTH.hud)
+      .setInteractive({ useHandCursor: true });
+    const text = this.add.text(cx, 23, label, { fontSize: '16px', color: COLORS.text })
+      .setOrigin(0.5).setDepth(DEPTH.hud);
+    rect.on('pointerover', () => rect.setFillStyle(0x4a6076));
+    rect.on('pointerout', () => rect.setFillStyle(0x2f3e52));
+    rect.on('pointerdown', () => { Sfx.resume(); cb(); });
+    return { rect, text };
+  }
+
+  toggleSpeed() {
+    this.gameSpeed = this.gameSpeed === 1 ? 2 : 1;
+    this.speedBtn.text.setText(`${this.gameSpeed}x`);
+  }
+
+  togglePause() {
+    this.paused = !this.paused;
+    this.pauseBtn.text.setText(this.paused ? '▶' : '⏸');
+  }
+
+  toggleMute() {
+    const m = !Sfx.isMuted();
+    Sfx.setMuted(m);
+    this.muteBtn.text.setText(m ? '🔇' : '🔊');
   }
 
   updateHud() {
@@ -156,6 +194,7 @@ export default class GameScene extends Phaser.Scene {
     this.updateHud();
     this.refreshWaveButton();
     this.closePanel();
+    Sfx.wave();
   }
 
   onWaveComplete() {
@@ -203,8 +242,10 @@ export default class GameScene extends Phaser.Scene {
       this.updateHud();
       this.floatText(enemy.x, enemy.y - 10, `+$${enemy.def.reward}`, '#ffd866', 16);
       this.destroyEnemyGfx(enemy);
+      Sfx.kill();
     } else {
       enemy.hpFill.scaleX = Math.max(0, enemy.hp / enemy.maxHp);
+      Sfx.hit();
     }
   }
 
@@ -234,10 +275,33 @@ export default class GameScene extends Phaser.Scene {
     const tower = {
       key: towerKey, def, kind: def.kind, x: spot.x, y: spot.y,
       level: 1, range: def.range, damage: def.damage, splash: def.splash,
-      fireRate: def.fireRate, cd: 0, base, barrel, lvText, spot,
+      fireRate: def.fireRate, cd: 0, invested: def.cost, base, barrel, lvText, spot,
     };
     spot.tower = tower;
     this.towers.push(tower);
+    Sfx.build();
+    this.closePanel();
+  }
+
+  sellValueOf(tower) {
+    return Math.floor(tower.invested * 0.6); // 投資額の60%を払い戻し
+  }
+
+  sellTower(tower) {
+    const refund = this.sellValueOf(tower);
+    this.money += refund;
+    this.updateHud();
+    this.floatText(tower.x, tower.y - 24, `+$${refund}`, '#ffd866', 16);
+    // スロットを空に戻す
+    const spot = tower.spot;
+    spot.tower = null;
+    spot.pad.setFillStyle(COLORS.slot);
+    spot.plus.setText('＋');
+    tower.base.destroy();
+    tower.barrel.destroy();
+    tower.lvText.destroy();
+    this.towers = this.towers.filter((t) => t !== tower);
+    Sfx.sell();
     this.closePanel();
   }
 
@@ -254,9 +318,11 @@ export default class GameScene extends Phaser.Scene {
     tower.damage += tower.def.up.damage;
     tower.range += tower.def.up.range;
     tower.splash += tower.def.up.splash;
+    tower.invested += cost;
     tower.lvText.setText(`Lv${tower.level}`);
     this.updateHud();
     this.floatText(tower.x, tower.y - 24, 'UP!', '#9ad0ff', 18);
+    Sfx.upgrade();
     this.closePanel();
   }
 
@@ -288,6 +354,7 @@ export default class GameScene extends Phaser.Scene {
     });
     // 砲身の発射リコイル（軽い演出）
     this.tweens.add({ targets: tower.barrel, scaleY: 0.7, duration: 60, yoyo: true });
+    Sfx.fire();
   }
 
   // ── 弾 ──────────────────────────────────────────────────
@@ -338,6 +405,7 @@ export default class GameScene extends Phaser.Scene {
       targets: ring, alpha: 0, scale: 1.15, duration: 220,
       onComplete: () => ring.destroy(),
     });
+    Sfx.explode();
   }
 
   killProjectile(p) {
@@ -393,27 +461,31 @@ export default class GameScene extends Phaser.Scene {
     const cost = this.upgradeCostOf(tower);
 
     this.makeBackdrop();
-    this.addPanelItem(this.add.rectangle(x, y, w, 150, 0x16202c, 0.96)
+    this.addPanelItem(this.add.rectangle(x, y, w, 196, 0x16202c, 0.96)
       .setStrokeStyle(2, 0x4a6076).setDepth(DEPTH.panel));
-    this.addPanelItem(this.add.text(x, y - 56, `${tower.def.name}  Lv${tower.level}`, {
+    this.addPanelItem(this.add.text(x, y - 78, `${tower.def.name}  Lv${tower.level}`, {
       fontSize: '18px', fontStyle: 'bold', color: COLORS.text,
     }).setOrigin(0.5).setDepth(DEPTH.panel));
-    this.addPanelItem(this.add.text(x, y - 26,
+    this.addPanelItem(this.add.text(x, y - 50,
       `射程 ${tower.range}  /  威力 ${tower.damage}${tower.splash > 0 ? `  /  範囲 ${tower.splash}` : ''}`, {
         fontSize: '14px', color: '#9fb3c8',
       }).setOrigin(0.5).setDepth(DEPTH.panel));
 
     if (maxed) {
-      this.addPanelItem(this.add.text(x, y + 26, 'MAX レベル', {
+      this.addPanelItem(this.add.text(x, y - 8, 'MAX レベル', {
         fontSize: '18px', fontStyle: 'bold', color: '#ffd866',
       }).setOrigin(0.5).setDepth(DEPTH.panel));
     } else {
-      this.makeButton(x, y + 30, w - 24, 44, 0x2f6fb0,
+      this.makeButton(x, y - 6, w - 24, 44, 0x2f6fb0,
         `強化 → Lv${tower.level + 1}   $${cost}`,
         `威力+${tower.def.up.damage} / 射程+${tower.def.up.range}`,
         this.money >= cost,
         () => this.upgradeTower(tower));
     }
+
+    this.makeButton(x, y + 50, w - 24, 38, 0x7a4a4a,
+      `売却  +$${this.sellValueOf(tower)}`, null, true,
+      () => this.sellTower(tower));
   }
 
   makeBackdrop() {
@@ -466,6 +538,7 @@ export default class GameScene extends Phaser.Scene {
     this.waveActive = false;
     this.closePanel();
     this.refreshWaveButton();
+    if (win) Sfx.win(); else Sfx.lose();
 
     this.add.rectangle(0, 0, GAME_W, GAME_H, 0x0a0f16, 0.72)
       .setOrigin(0, 0).setDepth(DEPTH.end);
@@ -491,12 +564,13 @@ export default class GameScene extends Phaser.Scene {
 
   // ── メインループ ─────────────────────────────────────────
   update(time, delta) {
-    if (this.gameOver) return;
-    const dt = Math.min(delta, 50) / 1000; // 秒（タブ復帰時の大ジャンプを抑制）
+    if (this.gameOver || this.paused) return;
+    const d = delta * this.gameSpeed;            // 速度倍率（1x/2x）
+    const dt = Math.min(d, 50) / 1000;           // 秒（大ジャンプを抑制）
 
     // 1) 敵スポーン
     if (this.waveActive && this.spawnQueue.length) {
-      this.spawnAccum += delta;
+      this.spawnAccum += d;
       while (this.spawnQueue.length && this.spawnAccum >= this.spawnQueue[0].delay) {
         this.spawnAccum -= this.spawnQueue[0].delay;
         this.spawnEnemy(this.spawnQueue.shift().type);
@@ -514,6 +588,7 @@ export default class GameScene extends Phaser.Scene {
         this.flashColor(this.livesText, COLORS.lives);
         this.destroyEnemyGfx(e);
         this.updateHud();
+        Sfx.leak();
         if (this.lives <= 0) { this.lives = 0; this.updateHud(); this.showEnd(false); return; }
         continue;
       }
@@ -528,7 +603,7 @@ export default class GameScene extends Phaser.Scene {
 
     // 3) タワーの射撃
     for (const t of this.towers) {
-      t.cd -= delta;
+      t.cd -= d;
       if (t.cd <= 0) {
         const target = this.findTarget(t);
         if (target) { this.fireTower(t, target); t.cd = t.fireRate; }

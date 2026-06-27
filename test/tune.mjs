@@ -63,5 +63,11 @@ async function play(label, plan) {
 }
 
 await play('無防備', []);
-await play('1基のみ', [{ act: 'build', spot: 0, type: 'guard' }]);
+await play('2基', [
+  { act: 'build', spot: 0, type: 'guard' }, { act: 'build', spot: 6, type: 'guard' },
+]);
+await play('4基', [
+  { act: 'build', spot: 0, type: 'guard' }, { act: 'build', spot: 6, type: 'guard' },
+  { act: 'build', spot: 2, type: 'guard' }, { act: 'build', spot: 8, type: 'soba' },
+]);
 await play('良配置', GOOD_PLAN);
