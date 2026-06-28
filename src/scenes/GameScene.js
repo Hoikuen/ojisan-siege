@@ -17,12 +17,20 @@ export default class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    const frames = ['walk_1', 'walk_2', 'walk_3', 'walk_4', 'idle', 'hurt', 'dead_1', 'dead_2'];
+    const enemyFrames = ['walk_1', 'walk_2', 'walk_3', 'walk_4', 'idle', 'hurt', 'dead_1', 'dead_2'];
     for (const t of ['grunt', 'runner', 'brute', 'boss', 'subashikko', 'zombie']) {
-      for (const f of frames) {
+      for (const f of enemyFrames) {
         this.load.image(`${t}_${f}`, `assets/sprites/enemies/${t}/${f}.png`);
       }
     }
+    const towerFrames = ['idle', 'attack_1', 'attack_2', 'attack_3', 'attack_4', 'return_1', 'return_2', 'idle_alt'];
+    for (const t of ['guard', 'soba', 'sniper', 'receptionist']) {
+      for (const f of towerFrames) {
+        this.load.image(`${t}_${f}`, `assets/sprites/towers/${t}/${f}.png`);
+      }
+    }
+    this.load.image('bg_jyutakugai', 'assets/backgrounds/jyutakugai.png');
+    this.load.image('bg_shotengai', 'assets/backgrounds/shotengai.png');
   }
 
   create() {
@@ -60,6 +68,10 @@ export default class GameScene extends Phaser.Scene {
 
   // ── 盤面（道・設置スロット）を描く ─────────────────────────
   drawBoard() {
+    if (this.map.bgKey) {
+      this.add.image(GAME_W / 2, GAME_H / 2, `bg_${this.map.bgKey}`)
+        .setDisplaySize(GAME_W, GAME_H).setDepth(DEPTH.road - 1);
+    }
     const path = this.map.path;
     const roadWidth = this.map.roadWidth;
     const g = this.add.graphics().setDepth(DEPTH.road);
@@ -340,18 +352,17 @@ export default class GameScene extends Phaser.Scene {
 
     spot.pad.setFillStyle(def.color);
     spot.plus.setText('');
-    const base = this.add.rectangle(spot.x, spot.y, 34, 34, def.color)
-      .setStrokeStyle(3, 0x10161f, 0.7).setDepth(DEPTH.tower);
-    const barrel = this.add.rectangle(spot.x, spot.y - 4, 8, 22, 0x10161f, 0.85)
-      .setOrigin(0.5, 1).setDepth(DEPTH.tower);
-    const lvText = this.add.text(spot.x, spot.y + 22, 'Lv1', { fontSize: '13px', color: COLORS.text })
+    const sprite = this.add.image(spot.x, spot.y, `${towerKey}_idle`)
+      .setScale(0.5).setOrigin(0.5, 1).setDepth(DEPTH.tower);
+    const lvText = this.add.text(spot.x, spot.y + 4, 'Lv1', { fontSize: '13px', color: COLORS.text })
       .setOrigin(0.5).setDepth(DEPTH.tower);
 
     const tower = {
       key: towerKey, def, kind: def.kind, x: spot.x, y: spot.y,
       level: 1, range: def.range, damage: def.damage, splash: def.splash,
-      fireRate: def.fireRate, cd: 0, invested: def.cost, base, barrel, lvText, spot,
+      fireRate: def.fireRate, cd: 0, invested: def.cost, sprite, lvText, spot,
       shots: def.shots || 1,
+      animState: 'idle', animTimer: 0,
     };
     spot.tower = tower;
     this.towers.push(tower);
@@ -373,8 +384,7 @@ export default class GameScene extends Phaser.Scene {
     spot.tower = null;
     spot.pad.setFillStyle(COLORS.slot);
     spot.plus.setText('＋');
-    tower.base.destroy();
-    tower.barrel.destroy();
+    tower.sprite.destroy();
     tower.lvText.destroy();
     this.towers = this.towers.filter((t) => t !== tower);
     Sfx.sell();
@@ -446,8 +456,8 @@ export default class GameScene extends Phaser.Scene {
       slowMult: def.slowMult || 1, slowDuration: def.slowDuration || 0,
       color: projColor, life: 0, go,
     });
-    // 砲身の発射リコイル（軽い演出）
-    this.tweens.add({ targets: tower.barrel, scaleY: 0.7, duration: 60, yoyo: true });
+    tower.animState = 'attack';
+    tower.animTimer = 0;
     Sfx.fire();
   }
 
@@ -746,7 +756,23 @@ export default class GameScene extends Phaser.Scene {
     }
 
     // 3) タワーの射撃
+    const ATTACK_SEQ = ['attack_1', 'attack_2', 'attack_3', 'attack_4', 'return_1', 'return_2'];
     for (const t of this.towers) {
+      // タワーアニメーション
+      t.animTimer += d;
+      if (t.animState === 'attack') {
+        const fi = Math.floor(t.animTimer / 80);
+        if (fi >= ATTACK_SEQ.length) {
+          t.animState = 'idle';
+          t.animTimer = 0;
+          t.sprite.setTexture(`${t.key}_idle`);
+        } else {
+          t.sprite.setTexture(`${t.key}_${ATTACK_SEQ[fi]}`);
+        }
+      } else {
+        t.sprite.setTexture(Math.floor(t.animTimer / 1500) % 2 === 0 ? `${t.key}_idle` : `${t.key}_idle_alt`);
+      }
+
       t.cd -= d;
       if (t.cd <= 0) {
         if (t.shots > 1) {

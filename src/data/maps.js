@@ -5,6 +5,7 @@
 export const MAPS = [
   {
     name: '住宅街',
+    bgKey: 'jyutakugai',
     roadWidth: 56,
     startMoney: 100,
     startLives: 20,
@@ -35,6 +36,7 @@ export const MAPS = [
   },
   {
     name: '商店街',
+    bgKey: 'shotengai',
     roadWidth: 56,
     startMoney: 115,
     startLives: 20,
