@@ -75,18 +75,19 @@ export default class GameScene extends Phaser.Scene {
     const path = this.map.path;
     const roadWidth = this.map.roadWidth;
     const g = this.add.graphics().setDepth(DEPTH.road);
-    // 道（太線）
-    g.lineStyle(roadWidth, COLORS.road, 1);
-    g.beginPath();
-    g.moveTo(path[0][0], path[0][1]);
-    for (let i = 1; i < path.length; i++) g.lineTo(path[i][0], path[i][1]);
-    g.strokePath();
-    // 道の縁（細い明線）で見やすく
-    g.lineStyle(2, COLORS.roadEdge, 0.8);
-    g.beginPath();
-    g.moveTo(path[0][0], path[0][1]);
-    for (let i = 1; i < path.length; i++) g.lineTo(path[i][0], path[i][1]);
-    g.strokePath();
+    // 背景画像がある場合は道の描画をスキップ（背景の道をそのまま使う）
+    if (!this.map.bgKey) {
+      g.lineStyle(roadWidth, COLORS.road, 1);
+      g.beginPath();
+      g.moveTo(path[0][0], path[0][1]);
+      for (let i = 1; i < path.length; i++) g.lineTo(path[i][0], path[i][1]);
+      g.strokePath();
+      g.lineStyle(2, COLORS.roadEdge, 0.8);
+      g.beginPath();
+      g.moveTo(path[0][0], path[0][1]);
+      for (let i = 1; i < path.length; i++) g.lineTo(path[i][0], path[i][1]);
+      g.strokePath();
+    }
 
     // ゴールマーカー：ここに敵が着くとライフが減る
     const end = path[path.length - 1];
