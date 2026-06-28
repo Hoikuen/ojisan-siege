@@ -281,7 +281,7 @@ export default class GameScene extends Phaser.Scene {
     const SPRITE_TYPES = new Set(['grunt', 'runner', 'brute', 'boss', 'subashikko', 'zombie']);
     const hasSprite = SPRITE_TYPES.has(type);
     let body, face;
-    const spriteScale = def.size / 64;
+    const spriteScale = def.size / 40;
     const barYOff = hasSprite ? (128 * spriteScale) / 2 + 5 : def.size / 2 + 9;
 
     if (hasSprite) {
@@ -353,8 +353,8 @@ export default class GameScene extends Phaser.Scene {
     spot.pad.setFillStyle(def.color);
     spot.plus.setText('');
     const sprite = this.add.image(spot.x, spot.y, `${towerKey}_idle`)
-      .setScale(0.5).setOrigin(0.5, 1).setDepth(DEPTH.tower);
-    const lvText = this.add.text(spot.x, spot.y + 4, 'Lv1', { fontSize: '13px', color: COLORS.text })
+      .setScale(0.85).setOrigin(0.5, 1).setDepth(DEPTH.tower);
+    const lvText = this.add.text(spot.x, spot.y + 2, 'Lv1', { fontSize: '10px', color: '#aabbcc' })
       .setOrigin(0.5).setDepth(DEPTH.tower);
 
     const tower = {
