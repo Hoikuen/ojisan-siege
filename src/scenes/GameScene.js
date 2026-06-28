@@ -31,6 +31,7 @@ export default class GameScene extends Phaser.Scene {
     }
     this.load.image('bg_jyutakugai', 'assets/backgrounds/jyutakugai.png');
     this.load.image('bg_shotengai', 'assets/backgrounds/shotengai.png');
+    this.load.image('bg_officedistrict', 'assets/backgrounds/officedistrict.png');
   }
 
   create() {

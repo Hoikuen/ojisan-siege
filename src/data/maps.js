@@ -98,6 +98,7 @@ export const MAPS = [
   },
   {
     name: 'オフィス街',
+    bgKey: 'officedistrict',
     roadWidth: 50,
     startMoney: 130,
     startLives: 20,
