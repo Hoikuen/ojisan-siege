@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_W, GAME_H, COLORS } from '../config.js';
-import { ENEMIES, TOWERS, WAVE_CLEAR_BONUS } from '../data/content.js';
+import { ENEMIES, TOWERS } from '../data/content.js';
 import { MAPS } from '../data/maps.js';
 import { buildPath, posAt } from '../path.js';
 import { Sfx } from '../audio.js';
@@ -58,6 +58,9 @@ export default class GameScene extends Phaser.Scene {
 
     this.panelItems = [];
     this.rangePreview = null;
+    this.currentPanel = null;   // { type:'build', spot } or { type:'tower', tower }
+    this._panelRefreshing = false;
+    this.panelDirty = false;
 
     this.gameSpeed = 1;   // 1x / 2x
     this.paused = false;
@@ -191,15 +194,23 @@ export default class GameScene extends Phaser.Scene {
     this.livesText.setText(`❤ ${this.lives}`);
     const mapLabel = `🗺 ${this.map.name}(${this.mapIndex + 1}/${MAPS.length})`;
     this.waveText.setText(`${mapLabel}  ウェーブ ${Math.min(this.waveStartedCount, this.waves.length)}/${this.waves.length}`);
+    if (this.currentPanel) this.panelDirty = true;
   }
 
   refreshWaveButton() {
-    const canStart = !this.waveActive && !this.gameOver && !this.awaitingNext
+    const canStart = !this.gameOver && !this.awaitingNext
       && this.waveStartedCount < this.waves.length;
     this.waveBtnRect.setVisible(canStart);
     this.waveBtnText.setVisible(canStart);
     if (canStart) {
-      this.waveBtnText.setText(this.waveStartedCount === 0 ? 'ウェーブ開始 ▶' : '次のウェーブ ▶');
+      const nextNum = this.waveStartedCount + 1;
+      if (this.waveStartedCount === 0) {
+        this.waveBtnText.setText('ウェーブ開始 ▶');
+      } else if (this.waveActive) {
+        this.waveBtnText.setText(`Wave ${nextNum} 早送り ▶`);
+      } else {
+        this.waveBtnText.setText(`Wave ${nextNum} 開始 ▶`);
+      }
       this.waveBtnRect.setInteractive({ useHandCursor: true });
     } else {
       this.waveBtnRect.disableInteractive();
@@ -213,15 +224,15 @@ export default class GameScene extends Phaser.Scene {
 
   // ── ウェーブ開始・完了 ───────────────────────────────────
   startWave() {
-    if (this.waveActive || this.gameOver || this.awaitingNext
-      || this.waveStartedCount >= this.waves.length) return;
+    if (this.gameOver || this.awaitingNext || this.waveStartedCount >= this.waves.length) return;
     const wave = this.waves[this.waveStartedCount];
-    this.spawnQueue = [];
+    const entries = [];
     for (const group of wave) {
-      for (let i = 0; i < group.count; i++) this.spawnQueue.push({ type: group.type, delay: group.gap });
+      for (let i = 0; i < group.count; i++) entries.push({ type: group.type, delay: group.gap });
     }
-    if (this.spawnQueue.length) this.spawnQueue[0].delay = 350; // 最初の1体は早めに
-    this.spawnAccum = 0;
+    // キューが空のときだけ最初の敵を早出し（上乗せ時は継続間隔のまま）
+    if (this.spawnQueue.length === 0 && entries.length) entries[0].delay = 350;
+    this.spawnQueue.push(...entries);
     this.waveActive = true;
     this.waveStartedCount += 1;
     this.updateHud();
@@ -238,11 +249,10 @@ export default class GameScene extends Phaser.Scene {
       else this.showMapClear();                                  // 次マップへ
       return;
     }
-    const bonus = WAVE_CLEAR_BONUS[this.waveStartedCount - 1] || 0;
-    if (bonus) {
-      this.money += bonus;
-      this.floatText(GAME_W / 2, 90, `ウェーブ突破！ +$${bonus}`, '#ffd866', 26);
-    }
+    const w = this.waveStartedCount;
+    const bonus = w % 10 === 0 ? 50 : (w % 5 === 0 ? 25 : 12);
+    this.money += bonus;
+    this.floatText(GAME_W / 2, 90, `ウェーブ突破！ +$${bonus}`, '#ffd866', 26);
     this.updateHud();
     this.refreshWaveButton();
   }
@@ -404,9 +414,9 @@ export default class GameScene extends Phaser.Scene {
     tower.splash += tower.def.up.splash;
     tower.shots += tower.def.up.shots || 0;
     tower.invested += cost;
-    // Lv2=銀青・Lv3=金でレベルを視覚化
-    const LEVEL_TINTS = [0xffffff, 0x88ccff, 0xffcc00];
-    tower.sprite.setTint(LEVEL_TINTS[tower.level - 1] || 0xffcc00);
+    // Lv2=金・Lv3=赤でレベルを視覚化（視認性重視）
+    const LEVEL_TINTS = [0xffffff, 0xffcc00, 0xff3333];
+    tower.sprite.setTint(LEVEL_TINTS[tower.level - 1] || 0xff3333);
     this.updateHud();
     this.floatText(tower.x, tower.y - 24, 'UP!', '#9ad0ff', 18);
     Sfx.upgrade();
@@ -530,8 +540,18 @@ export default class GameScene extends Phaser.Scene {
   }
 
   // ── 建設メニュー / 強化メニュー ───────────────────────────
+  refreshPanel() {
+    if (this._panelRefreshing || !this.currentPanel) return;
+    this._panelRefreshing = true;
+    const { type, spot, tower } = this.currentPanel;
+    if (type === 'build') this.openBuildMenu(spot);
+    else if (type === 'tower') this.openTowerMenu(tower);
+    this._panelRefreshing = false;
+  }
+
   openBuildMenu(spot) {
     this.closePanel();
+    this.currentPanel = { type: 'build', spot };
     this.showRangePreview(spot.x, spot.y, TOWERS.guard.range); // 目安として警備員射程
     const w = 240;
     const x = Phaser.Math.Clamp(spot.x, w / 2 + 10, GAME_W - w / 2 - 10);
@@ -571,6 +591,7 @@ export default class GameScene extends Phaser.Scene {
 
   openTowerMenu(tower) {
     this.closePanel();
+    this.currentPanel = { type: 'tower', tower };
     this.showRangePreview(tower.x, tower.y, tower.range);
     const w = 240;
     const x = Phaser.Math.Clamp(tower.x, w / 2 + 10, GAME_W - w / 2 - 10);
@@ -655,6 +676,8 @@ export default class GameScene extends Phaser.Scene {
     for (const o of this.panelItems) o.destroy();
     this.panelItems = [];
     if (this.rangePreview) { this.rangePreview.destroy(); this.rangePreview = null; }
+    this.currentPanel = null;
+    this.panelDirty = false;
   }
 
   showRangePreview(x, y, range) {
@@ -800,6 +823,12 @@ export default class GameScene extends Phaser.Scene {
     // 6) ウェーブ完了判定
     if (this.waveActive && this.spawnQueue.length === 0 && this.enemies.length === 0) {
       this.onWaveComplete();
+    }
+
+    // 7) パネルが開いている間にお金が変化したらボタン状態を再描画
+    if (this.panelDirty && this.currentPanel) {
+      this.panelDirty = false;
+      this.refreshPanel();
     }
   }
 }

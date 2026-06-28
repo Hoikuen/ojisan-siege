@@ -2,6 +2,65 @@
 // マップを足す＝この配列に1要素足すだけ（経路・スロット・ウェーブ・初期値を持つ）。
 // 敵/タワーの定義は content.js（全マップ共通）。
 
+// 30波分のウェーブを自動生成。mapDiff=1/2/3 で難易度スケール。
+function generateWaves(mapDiff, count = 30) {
+  const waves = [];
+  for (let w = 1; w <= count; w++) {
+    const s = (1 + (w - 1) * 0.05) * (0.8 + mapDiff * 0.2); // 波数×難易度スケール
+    const wave = [];
+
+    // grunt（常時）
+    wave.push({
+      type: 'grunt',
+      count: Math.min(40, Math.max(3, Math.round((5 + w * 0.7) * s * 0.55))),
+      gap: Math.max(270, 560 - w * 9),
+    });
+    // subashikko（4波から）
+    if (w >= 4) {
+      wave.push({
+        type: 'subashikko',
+        count: Math.min(20, Math.max(2, Math.round((2 + w * 0.35) * s * 0.5))),
+        gap: Math.max(150, 290 - w * 4),
+      });
+    }
+    // runner（7波から）
+    if (w >= 7) {
+      wave.push({
+        type: 'runner',
+        count: Math.min(20, Math.max(3, Math.round((3 + w * 0.45) * s * 0.5))),
+        gap: Math.max(200, 360 - w * 5),
+      });
+    }
+    // brute（13波から）
+    if (w >= 13) {
+      wave.push({
+        type: 'brute',
+        count: Math.min(10, Math.max(1, Math.round((1 + (w - 13) * 0.22) * s * 0.45))),
+        gap: Math.max(600, 1100 - w * 14),
+      });
+    }
+    // zombie（17波から）
+    if (w >= 17) {
+      wave.push({
+        type: 'zombie',
+        count: Math.min(8, Math.max(1, Math.round((1 + (w - 17) * 0.18) * s * 0.4))),
+        gap: Math.max(700, 1200 - w * 14),
+      });
+    }
+    // boss（10波ごと）
+    if (w % 10 === 0) {
+      wave.push({
+        type: 'boss',
+        count: Math.min(5 * mapDiff, Math.max(1, Math.floor(w / 10) * mapDiff)),
+        gap: Math.max(1400, 3500 - w * 40),
+      });
+    }
+
+    waves.push(wave);
+  }
+  return waves;
+}
+
 export const MAPS = [
   {
     name: '住宅街',
@@ -17,22 +76,7 @@ export const MAPS = [
       { x: 320, y: 210 }, { x: 520, y: 210 }, { x: 720, y: 210 }, { x: 920, y: 210 }, { x: 1170, y: 210 },
       { x: 120, y: 390 }, { x: 360, y: 390 }, { x: 560, y: 390 }, { x: 760, y: 390 }, { x: 960, y: 390 },
     ],
-    waves: [
-      [{ type: 'grunt', count: 12, gap: 650 }],
-      [
-        { type: 'grunt', count: 10, gap: 520 },
-        { type: 'subashikko', count: 6, gap: 280 },
-        { type: 'runner', count: 8, gap: 360 },
-        { type: 'grunt', count: 6, gap: 520 },
-      ],
-      [
-        { type: 'grunt', count: 14, gap: 430 },
-        { type: 'zombie', count: 3, gap: 1200 },
-        { type: 'brute', count: 4, gap: 1050 },
-        { type: 'runner', count: 12, gap: 300 },
-        { type: 'boss', count: 1, gap: 600 },
-      ],
-    ],
+    waves: generateWaves(1),
   },
   {
     name: '商店街',
@@ -50,24 +94,7 @@ export const MAPS = [
       { x: 340, y: 340 }, { x: 580, y: 340 }, { x: 820, y: 340 }, { x: 1040, y: 340 },
       { x: 340, y: 500 }, { x: 580, y: 500 }, { x: 820, y: 500 }, { x: 1040, y: 500 },
     ],
-    waves: [
-      [{ type: 'grunt', count: 16, gap: 560 }],
-      [
-        { type: 'grunt', count: 12, gap: 460 },
-        { type: 'subashikko', count: 8, gap: 240 },
-        { type: 'runner', count: 10, gap: 320 },
-        { type: 'brute', count: 3, gap: 1100 },
-        { type: 'grunt', count: 8, gap: 460 },
-      ],
-      [
-        { type: 'grunt', count: 16, gap: 380 },
-        { type: 'zombie', count: 4, gap: 1000 },
-        { type: 'brute', count: 5, gap: 900 },
-        { type: 'subashikko', count: 8, gap: 220 },
-        { type: 'runner', count: 14, gap: 260 },
-        { type: 'boss', count: 2, gap: 1600 },
-      ],
-    ],
+    waves: generateWaves(2),
   },
   {
     name: 'オフィス街',
@@ -86,27 +113,6 @@ export const MAPS = [
       { x: 300, y: 365 }, { x: 560, y: 365 }, { x: 820, y: 365 }, { x: 1060, y: 365 },
       { x: 300, y: 475 }, { x: 560, y: 475 }, { x: 820, y: 475 },
     ],
-    waves: [
-      [
-        { type: 'grunt',      count: 20, gap: 480 },
-        { type: 'runner',     count: 12, gap: 300 },
-        { type: 'subashikko', count: 10, gap: 200 },
-      ],
-      [
-        { type: 'grunt',      count: 16, gap: 400 },
-        { type: 'brute',      count: 6,  gap: 800 },
-        { type: 'zombie',     count: 5,  gap: 900 },
-        { type: 'runner',     count: 16, gap: 260 },
-        { type: 'subashikko', count: 12, gap: 180 },
-      ],
-      [
-        { type: 'grunt',      count: 20, gap: 360 },
-        { type: 'brute',      count: 8,  gap: 700 },
-        { type: 'zombie',     count: 6,  gap: 800 },
-        { type: 'runner',     count: 20, gap: 240 },
-        { type: 'subashikko', count: 15, gap: 160 },
-        { type: 'boss',       count: 3,  gap: 2000 },
-      ],
-    ],
+    waves: generateWaves(3),
   },
 ];
