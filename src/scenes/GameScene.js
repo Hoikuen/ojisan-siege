@@ -18,8 +18,10 @@ export default class GameScene extends Phaser.Scene {
 
   preload() {
     const frames = ['walk_1', 'walk_2', 'walk_3', 'walk_4', 'idle', 'hurt', 'dead_1', 'dead_2'];
-    for (const f of frames) {
-      this.load.image(`grunt_${f}`, `assets/sprites/enemies/grunt/${f}.png`);
+    for (const t of ['grunt', 'runner']) {
+      for (const f of frames) {
+        this.load.image(`${t}_${f}`, `assets/sprites/enemies/${t}/${f}.png`);
+      }
     }
   }
 
@@ -264,13 +266,13 @@ export default class GameScene extends Phaser.Scene {
     const pos = posAt(this.path, startDist);
     const barW = Math.max(24, def.size);
 
-    const hasSprite = type === 'grunt';
+    const hasSprite = type === 'grunt' || type === 'runner';
     let body, face;
     const spriteScale = def.size / 64;
     const barYOff = hasSprite ? (128 * spriteScale) / 2 + 5 : def.size / 2 + 9;
 
     if (hasSprite) {
-      body = this.add.image(pos.x, pos.y, 'grunt_walk_1')
+      body = this.add.image(pos.x, pos.y, `${type}_walk_1`)
         .setScale(spriteScale).setDepth(DEPTH.enemy);
       face = null;
     } else {
@@ -729,7 +731,7 @@ export default class GameScene extends Phaser.Scene {
         if (e.animTimer >= 125) {
           e.animTimer -= 125;
           e.animFrame = (e.animFrame + 1) % 4;
-          e.body.setTexture(`grunt_walk_${e.animFrame + 1}`);
+          e.body.setTexture(`${e.type}_walk_${e.animFrame + 1}`);
         }
         // 移動方向に応じて左右反転
         const posNext = posAt(this.path, Math.min(e.dist + 2, this.path.total));
