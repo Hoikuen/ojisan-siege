@@ -44,7 +44,9 @@ export default class GameScene extends Phaser.Scene {
     this.waves = this.map.waves;
 
     // ── 状態を毎回まっさらに（restartで再create）──
-    this.path = buildPath(this.map.path);
+    // paths: 複数ルート対応（map.paths があれば全ビルド、なければ単一パスを配列化）
+    this.paths = (this.map.paths || [this.map.path]).map(buildPath);
+    this.path = this.paths[0]; // 既存コード（射程判定・HUD等）の互換用
     this.money = this.map.startMoney;
     this.lives = this.map.startLives;
     this.waveStartedCount = 0; // これまでに開始したウェーブ数
@@ -292,7 +294,9 @@ export default class GameScene extends Phaser.Scene {
   // ── 敵 ───────────────────────────────────────────────────
   spawnEnemy(type, startDist = 0) {
     const def = ENEMIES[type];
-    const pos = posAt(this.path, startDist);
+    const pathIdx = Math.floor(Math.random() * this.paths.length);
+    const epath = this.paths[pathIdx];
+    const pos = posAt(epath, startDist);
     const barW = Math.max(24, def.size);
 
     const SPRITE_TYPES = new Set(['grunt', 'runner', 'brute', 'boss', 'subashikko', 'zombie']);
@@ -330,7 +334,7 @@ export default class GameScene extends Phaser.Scene {
     this.enemies.push({
       type, def, speed: def.speed, dist: startDist, hp: def.hp, maxHp: def.hp,
       x: pos.x, y: pos.y, alive: true, barW, body, face, hpBg, hpFill,
-      hasSprite, animTimer: 0, animFrame: 0, barYOff, spriteYOff,
+      hasSprite, animTimer: 0, animFrame: 0, barYOff, spriteYOff, pathIdx,
     });
   }
 
@@ -766,7 +770,8 @@ export default class GameScene extends Phaser.Scene {
         }
       }
       e.dist += e.speed * (e.slowMult || 1) * dt;
-      if (e.dist >= this.path.total) {
+      const epath = this.paths[e.pathIdx ?? 0];
+      if (e.dist >= epath.total) {
         // ゴール到達＝ライフ減・撃破報酬なし
         e.alive = false;
         this.lives -= e.def.leak;
@@ -777,7 +782,7 @@ export default class GameScene extends Phaser.Scene {
         if (this.lives <= 0) { this.lives = 0; this.updateHud(); this.showEnd(false); return; }
         continue;
       }
-      const pos = posAt(this.path, e.dist);
+      const pos = posAt(epath, e.dist);
       e.x = pos.x; e.y = pos.y;
       e.body.setPosition(pos.x, pos.y + (e.spriteYOff ?? 0));
       if (e.hasSprite) {
@@ -789,7 +794,7 @@ export default class GameScene extends Phaser.Scene {
           e.body.setTexture(`${e.type}_walk_${e.animFrame + 1}`);
         }
         // 移動方向に応じて左右反転
-        const posNext = posAt(this.path, Math.min(e.dist + 2, this.path.total));
+        const posNext = posAt(epath, Math.min(e.dist + 2, epath.total));
         e.body.setFlipX(posNext.x < pos.x);
       } else {
         e.face.setPosition(pos.x, pos.y);

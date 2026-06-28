@@ -38,8 +38,8 @@ export const TOWERS = {
     name: '警備員', kind: 'single', color: 0x4a5568,
     projColors: [0xffffff, 0xffd700, 0xff8c00],
     projSizes:  [4, 6, 9],
-    cost: 90, range: 200, damage: 18, fireRate: 2000, projSpeed: 900, splash: 0,
-    maxLevel: 15, up: { cost: 20, damage: 7, range: 12, splash: 0 },
+    cost: 90, range: 250, damage: 18, fireRate: 2000, projSpeed: 900, splash: 0,
+    maxLevel: 15, up: { cost: 28, damage: 7, range: 40, splash: 0 },
   },
   receptionist: {
     name: '受付嬢', kind: 'charm', color: 0xe87ac1, projColor: 0xff69b4,
