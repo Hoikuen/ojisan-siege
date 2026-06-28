@@ -18,7 +18,7 @@ export default class GameScene extends Phaser.Scene {
 
   preload() {
     const frames = ['walk_1', 'walk_2', 'walk_3', 'walk_4', 'idle', 'hurt', 'dead_1', 'dead_2'];
-    for (const t of ['grunt', 'runner']) {
+    for (const t of ['grunt', 'runner', 'brute', 'boss', 'subashikko', 'zombie']) {
       for (const f of frames) {
         this.load.image(`${t}_${f}`, `assets/sprites/enemies/${t}/${f}.png`);
       }
@@ -266,7 +266,8 @@ export default class GameScene extends Phaser.Scene {
     const pos = posAt(this.path, startDist);
     const barW = Math.max(24, def.size);
 
-    const hasSprite = type === 'grunt' || type === 'runner';
+    const SPRITE_TYPES = new Set(['grunt', 'runner', 'brute', 'boss', 'subashikko', 'zombie']);
+    const hasSprite = SPRITE_TYPES.has(type);
     let body, face;
     const spriteScale = def.size / 64;
     const barYOff = hasSprite ? (128 * spriteScale) / 2 + 5 : def.size / 2 + 9;
