@@ -20,32 +20,32 @@ export const ENEMIES = {
 // up:強化1段の上昇量（cost＝強化費） — レベルが上がるたび damage/range/splash が増える
 export const TOWERS = {
   guard: {
-    name: 'サラリーマン', levelNames: ['係長', '課長', '部長'],
+    name: 'サラリーマン',
     kind: 'single', color: 0x2f6fb0,
-    projColors: [0xf0e6d0, 0x8b6344, 0xb0b8c8], // 書類(クリーム)→カバン(茶)→パソコン(銀)
+    projColors: [0xf0e6d0, 0x8b6344, 0xb0b8c8],
     projSizes:  [5, 7, 10],
     cost: 50, range: 122, damage: 4, fireRate: 520, projSpeed: 640, splash: 0,
-    maxLevel: 3, up: { cost: 45, damage: 3, range: 16, splash: 0 },
+    maxLevel: 15, up: { cost: 18, damage: 2, range: 10, splash: 0 },
   },
   soba: {
     name: 'ゆとり社員', kind: 'splash', color: 0x6aaa5a,
-    projColors: [0xf5f0e0, 0xe8e0c8, 0xddd0b0], // 書類（だんだん汚れた感じ）
+    projColors: [0xf5f0e0, 0xe8e0c8, 0xddd0b0],
     projSizes:  [7, 9, 11],
     cost: 75, range: 100, damage: 3, fireRate: 950, projSpeed: 460, splash: 70,
-    maxLevel: 3, up: { cost: 60, damage: 2, range: 10, splash: 12 },
+    maxLevel: 15, up: { cost: 22, damage: 1, range: 8, splash: 6 },
   },
   sniper: {
     name: '警備員', kind: 'single', color: 0x4a5568,
-    projColors: [0xffffff, 0xffd700, 0xff8c00], // 拳銃弾：白→黄→橙（だんだんゴツく）
+    projColors: [0xffffff, 0xffd700, 0xff8c00],
     projSizes:  [4, 6, 9],
     cost: 90, range: 200, damage: 18, fireRate: 2000, projSpeed: 900, splash: 0,
-    maxLevel: 3, up: { cost: 55, damage: 10, range: 18, splash: 0 },
+    maxLevel: 15, up: { cost: 20, damage: 7, range: 12, splash: 0 },
   },
   receptionist: {
     name: '受付嬢', kind: 'charm', color: 0xe87ac1, projColor: 0xff69b4,
     cost: 80, range: 130, damage: 0, fireRate: 1400, projSpeed: 380, splash: 0,
     shots: 1,
-    maxLevel: 3, up: { cost: 50, damage: 0, range: 14, splash: 0, shots: 1 },
+    maxLevel: 15, up: { cost: 18, damage: 0, range: 10, splash: 0, shots: 1 },
     slowMult: 0.35, slowDuration: 2500,
   },
 };
