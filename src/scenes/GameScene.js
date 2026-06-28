@@ -729,11 +729,14 @@ export default class GameScene extends Phaser.Scene {
     const d = delta * this.gameSpeed;            // 速度倍率（1x/2x）
     const dt = Math.min(d, 50) / 1000;           // 秒（大ジャンプを抑制）
 
-    // 1) 敵スポーン
+    // 1) 敵スポーン（キュー蓄積量に応じてスポーン間隔を短縮）
     if (this.waveActive && this.spawnQueue.length) {
       this.spawnAccum += d;
-      while (this.spawnQueue.length && this.spawnAccum >= this.spawnQueue[0].delay) {
-        this.spawnAccum -= this.spawnQueue[0].delay;
+      while (this.spawnQueue.length) {
+        const speedup = Math.min(5, 1 + Math.floor(this.spawnQueue.length / 20));
+        const delay = Math.max(80, this.spawnQueue[0].delay / speedup);
+        if (this.spawnAccum < delay) break;
+        this.spawnAccum -= delay;
         this.spawnEnemy(this.spawnQueue.shift().type);
       }
     }
