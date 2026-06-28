@@ -3,7 +3,7 @@ import { GAME_W, GAME_H, COLORS } from '../config.js';
 import { ENEMIES, TOWERS } from '../data/content.js';
 import { MAPS } from '../data/maps.js';
 import { buildPath, posAt } from '../path.js';
-import { Sfx } from '../audio.js';
+import { Sfx, Bgm } from '../audio.js';
 
 // 深度（描画/入力の重なり順）
 const DEPTH = {
@@ -239,6 +239,7 @@ export default class GameScene extends Phaser.Scene {
     this.refreshWaveButton();
     this.closePanel();
     Sfx.wave();
+    Bgm.play(); // 初回のみ開始、以降はno-op
   }
 
   onWaveComplete() {
@@ -261,6 +262,7 @@ export default class GameScene extends Phaser.Scene {
     this.awaitingNext = true;
     this.closePanel();
     this.refreshWaveButton();
+    Bgm.stop();
     Sfx.win();
 
     this.add.rectangle(0, 0, GAME_W, GAME_H, 0x0a0f16, 0.7)
@@ -693,6 +695,7 @@ export default class GameScene extends Phaser.Scene {
     this.waveActive = false;
     this.closePanel();
     this.refreshWaveButton();
+    Bgm.stop();
     if (win) Sfx.win(); else Sfx.lose();
 
     this.add.rectangle(0, 0, GAME_W, GAME_H, 0x0a0f16, 0.72)

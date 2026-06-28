@@ -6,6 +6,71 @@ let ctx = null;
 let master = null;
 let muted = false;
 
+// ── BGM ─────────────────────────────────────────────────────
+let bgmPlaying = false;
+let bgmLoopId  = null;
+
+const BGM_S = 60 / 138 / 2; // 8th note @ 138BPM ≈ 0.217s
+
+// 16ステップのメロディ（Hz、0=休符）
+const BGM_MELODY = [
+  659, 784, 880, 784,   // E5 G5 A5 G5
+  659, 523, 587, 659,   // E5 C5 D5 E5
+  784, 659, 523, 440,   // G5 E5 C5 A4
+  494, 523, 659,   0,   // B4 C5 E5 rest
+];
+// ベース（0=先行ノートを伸ばす）
+const BGM_BASS = [
+  131, 0, 0, 0,   // C3 ×4
+  110, 0, 0, 0,   // A2 ×4
+   87, 0, 0, 0,   // F2 ×4
+   98, 0, 0, 0,   // G2 ×4
+];
+const BGM_LOOP = BGM_MELODY.length * BGM_S; // ~3.47s
+
+function bgmNote(freq, t0, dur, vol, type) {
+  if (!freq || !ctx || !master) return;
+  try {
+    const osc = ctx.createOscillator();
+    const g   = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.015);
+    g.gain.setValueAtTime(vol * 0.6, t0 + dur * 0.7);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g); g.connect(master);
+    osc.start(t0); osc.stop(t0 + dur + 0.01);
+  } catch (e) {}
+}
+
+function scheduleBgmLoop(startTime) {
+  if (!bgmPlaying) return;
+  const c = ensure();
+  if (!c) return; // ミュート中は停止。ミュート解除時に再スケジュール
+  for (let i = 0; i < BGM_MELODY.length; i++) {
+    const t = startTime + i * BGM_S;
+    if (BGM_MELODY[i]) bgmNote(BGM_MELODY[i], t, BGM_S * 0.82, 0.055, 'triangle');
+    if (BGM_BASS[i])   bgmNote(BGM_BASS[i],   t, BGM_S * 3.8,  0.045, 'triangle');
+  }
+  const delay = (startTime + BGM_LOOP - c.currentTime - 0.1) * 1000;
+  bgmLoopId = setTimeout(() => scheduleBgmLoop(startTime + BGM_LOOP), Math.max(0, delay));
+}
+
+export const Bgm = {
+  play() {
+    if (bgmPlaying) return;
+    bgmPlaying = true;
+    const c = ensure();
+    if (c) scheduleBgmLoop(c.currentTime + 0.05);
+  },
+  stop() {
+    bgmPlaying = false;
+    clearTimeout(bgmLoopId);
+    bgmLoopId = null;
+  },
+};
+
 function ensure() {
   if (muted) return null;
   try {
@@ -54,7 +119,14 @@ export const Sfx = {
   resume() { ensure(); },
   setMuted(m) {
     muted = m;
-    try { if (m && ctx) ctx.suspend(); else if (!m) ensure(); } catch (e) { /* noop */ }
+    try {
+      if (m && ctx) ctx.suspend();
+      else if (!m) {
+        ensure();
+        // ミュート解除でBGMが止まっていたら再スケジュール
+        if (bgmPlaying && ctx && !bgmLoopId) scheduleBgmLoop(ctx.currentTime + 0.05);
+      }
+    } catch (e) { /* noop */ }
   },
   isMuted() { return muted; },
 
