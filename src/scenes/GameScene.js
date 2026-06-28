@@ -16,6 +16,13 @@ export default class GameScene extends Phaser.Scene {
     super('GameScene');
   }
 
+  preload() {
+    const frames = ['walk_1', 'walk_2', 'walk_3', 'walk_4', 'idle', 'hurt', 'dead_1', 'dead_2'];
+    for (const f of frames) {
+      this.load.image(`grunt_${f}`, `assets/sprites/enemies/grunt/${f}.png`);
+    }
+  }
+
   create() {
     // ── マップ選択（restart時に {mapIndex} で受け取る）──
     const data = this.scene.settings.data || {};
@@ -256,19 +263,32 @@ export default class GameScene extends Phaser.Scene {
     const def = ENEMIES[type];
     const pos = posAt(this.path, startDist);
     const barW = Math.max(24, def.size);
-    const body = this.add.rectangle(pos.x, pos.y, def.size, def.size, def.color)
-      .setStrokeStyle(2, 0x10161f, 0.6).setDepth(DEPTH.enemy);
-    // 目（チビおじ感のプレースホルダー）
-    const face = this.add.text(pos.x, pos.y, '••', { fontSize: `${Math.round(def.size * 0.5)}px`, color: '#10161f' })
-      .setOrigin(0.5).setDepth(DEPTH.enemy);
-    const hpBg = this.add.rectangle(pos.x - barW / 2, pos.y - def.size / 2 - 9, barW, 5, 0x10161f, 0.7)
+
+    const hasSprite = type === 'grunt';
+    let body, face;
+    const spriteScale = def.size / 64;
+    const barYOff = hasSprite ? (128 * spriteScale) / 2 + 5 : def.size / 2 + 9;
+
+    if (hasSprite) {
+      body = this.add.image(pos.x, pos.y, 'grunt_walk_1')
+        .setScale(spriteScale).setDepth(DEPTH.enemy);
+      face = null;
+    } else {
+      body = this.add.rectangle(pos.x, pos.y, def.size, def.size, def.color)
+        .setStrokeStyle(2, 0x10161f, 0.6).setDepth(DEPTH.enemy);
+      face = this.add.text(pos.x, pos.y, '••', { fontSize: `${Math.round(def.size * 0.5)}px`, color: '#10161f' })
+        .setOrigin(0.5).setDepth(DEPTH.enemy);
+    }
+
+    const hpBg = this.add.rectangle(pos.x - barW / 2, pos.y - barYOff, barW, 5, 0x10161f, 0.7)
       .setOrigin(0, 0.5).setDepth(DEPTH.hpbar);
-    const hpFill = this.add.rectangle(pos.x - barW / 2, pos.y - def.size / 2 - 9, barW, 5, 0x57c98a)
+    const hpFill = this.add.rectangle(pos.x - barW / 2, pos.y - barYOff, barW, 5, 0x57c98a)
       .setOrigin(0, 0.5).setDepth(DEPTH.hpbar);
 
     this.enemies.push({
       type, def, speed: def.speed, dist: startDist, hp: def.hp, maxHp: def.hp,
       x: pos.x, y: pos.y, alive: true, barW, body, face, hpBg, hpFill,
+      hasSprite, animTimer: 0, animFrame: 0, barYOff,
     });
   }
 
@@ -296,13 +316,14 @@ export default class GameScene extends Phaser.Scene {
     if (!enemy.alive) return;
     enemy.slowMult = p.slowMult;
     enemy.slowTimer = p.slowDuration;
-    enemy.body.setFillStyle(0xff69b4);
+    if (enemy.hasSprite) enemy.body.setTint(0xff69b4);
+    else enemy.body.setFillStyle(0xff69b4);
     this.floatText(enemy.x, enemy.y - 14, '💕', '#ff69b4', 18);
   }
 
   destroyEnemyGfx(enemy) {
     enemy.body.destroy();
-    enemy.face.destroy();
+    if (enemy.face) enemy.face.destroy();
     enemy.hpBg.destroy();
     enemy.hpFill.destroy();
   }
@@ -681,7 +702,11 @@ export default class GameScene extends Phaser.Scene {
       if (!e.alive) continue;
       if (e.slowTimer > 0) {
         e.slowTimer -= d;
-        if (e.slowTimer <= 0) { e.slowTimer = 0; e.slowMult = 1; e.body.setFillStyle(e.def.color); }
+        if (e.slowTimer <= 0) {
+          e.slowTimer = 0; e.slowMult = 1;
+          if (e.hasSprite) e.body.clearTint();
+          else e.body.setFillStyle(e.def.color);
+        }
       }
       e.dist += e.speed * (e.slowMult || 1) * dt;
       if (e.dist >= this.path.total) {
@@ -698,8 +723,21 @@ export default class GameScene extends Phaser.Scene {
       const pos = posAt(this.path, e.dist);
       e.x = pos.x; e.y = pos.y;
       e.body.setPosition(pos.x, pos.y);
-      e.face.setPosition(pos.x, pos.y);
-      const by = pos.y - e.def.size / 2 - 9;
+      if (e.hasSprite) {
+        // 歩きアニメ（8fps）
+        e.animTimer += dt * 1000;
+        if (e.animTimer >= 125) {
+          e.animTimer -= 125;
+          e.animFrame = (e.animFrame + 1) % 4;
+          e.body.setTexture(`grunt_walk_${e.animFrame + 1}`);
+        }
+        // 移動方向に応じて左右反転
+        const posNext = posAt(this.path, Math.min(e.dist + 2, this.path.total));
+        e.body.setFlipX(posNext.x < pos.x);
+      } else {
+        e.face.setPosition(pos.x, pos.y);
+      }
+      const by = pos.y - e.barYOff;
       e.hpBg.setPosition(pos.x - e.barW / 2, by);
       e.hpFill.setPosition(pos.x - e.barW / 2, by);
     }
