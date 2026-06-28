@@ -353,14 +353,12 @@ export default class GameScene extends Phaser.Scene {
     spot.pad.setFillStyle(def.color);
     spot.plus.setText('');
     const sprite = this.add.image(spot.x, spot.y, `${towerKey}_idle`)
-      .setScale(0.85).setOrigin(0.5, 1).setDepth(DEPTH.tower);
-    const lvText = this.add.text(spot.x, spot.y + 2, 'Lv1', { fontSize: '10px', color: '#aabbcc' })
-      .setOrigin(0.5).setDepth(DEPTH.tower);
+      .setScale(0.85).setOrigin(0.5, 0.5).setDepth(DEPTH.tower);
 
     const tower = {
       key: towerKey, def, kind: def.kind, x: spot.x, y: spot.y,
       level: 1, range: def.range, damage: def.damage, splash: def.splash,
-      fireRate: def.fireRate, cd: 0, invested: def.cost, sprite, lvText, spot,
+      fireRate: def.fireRate, cd: 0, invested: def.cost, sprite, spot,
       shots: def.shots || 1,
       animState: 'idle', animTimer: 0,
     };
@@ -385,7 +383,6 @@ export default class GameScene extends Phaser.Scene {
     spot.pad.setFillStyle(COLORS.slot);
     spot.plus.setText('＋');
     tower.sprite.destroy();
-    tower.lvText.destroy();
     this.towers = this.towers.filter((t) => t !== tower);
     Sfx.sell();
     this.closePanel();
@@ -406,7 +403,6 @@ export default class GameScene extends Phaser.Scene {
     tower.splash += tower.def.up.splash;
     tower.shots += tower.def.up.shots || 0;
     tower.invested += cost;
-    tower.lvText.setText(`Lv${tower.level}`);
     this.updateHud();
     this.floatText(tower.x, tower.y - 24, 'UP!', '#9ad0ff', 18);
     Sfx.upgrade();
