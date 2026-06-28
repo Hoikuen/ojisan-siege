@@ -69,4 +69,44 @@ export const MAPS = [
       ],
     ],
   },
+  {
+    name: 'オフィス街',
+    roadWidth: 50,
+    startMoney: 130,
+    startLives: 20,
+    // 5レーン蛇行（左上→右→左→右→左→右下へ抜ける）
+    path: [
+      [-60, 90], [1220, 90], [1220, 200], [100, 200],
+      [100, 310], [1220, 310], [1220, 420], [100, 420],
+      [100, 530], [1340, 530],
+    ],
+    spots: [
+      { x: 300, y: 145 }, { x: 560, y: 145 }, { x: 820, y: 145 }, { x: 1060, y: 145 },
+      { x: 300, y: 255 }, { x: 560, y: 255 }, { x: 820, y: 255 },
+      { x: 300, y: 365 }, { x: 560, y: 365 }, { x: 820, y: 365 }, { x: 1060, y: 365 },
+      { x: 300, y: 475 }, { x: 560, y: 475 }, { x: 820, y: 475 },
+    ],
+    waves: [
+      [
+        { type: 'grunt',      count: 20, gap: 480 },
+        { type: 'runner',     count: 12, gap: 300 },
+        { type: 'subashikko', count: 10, gap: 200 },
+      ],
+      [
+        { type: 'grunt',      count: 16, gap: 400 },
+        { type: 'brute',      count: 6,  gap: 800 },
+        { type: 'zombie',     count: 5,  gap: 900 },
+        { type: 'runner',     count: 16, gap: 260 },
+        { type: 'subashikko', count: 12, gap: 180 },
+      ],
+      [
+        { type: 'grunt',      count: 20, gap: 360 },
+        { type: 'brute',      count: 8,  gap: 700 },
+        { type: 'zombie',     count: 6,  gap: 800 },
+        { type: 'runner',     count: 20, gap: 240 },
+        { type: 'subashikko', count: 15, gap: 160 },
+        { type: 'boss',       count: 3,  gap: 2000 },
+      ],
+    ],
+  },
 ];
