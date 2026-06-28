@@ -105,14 +105,15 @@ export default class GameScene extends Phaser.Scene {
     this.add.rectangle(0, 0, GAME_W, 46, 0x16202c, 0.85)
       .setOrigin(0, 0).setDepth(DEPTH.hud - 1);
 
-    const st = { fontSize: '22px', fontStyle: 'bold' };
+    const pad = { top: 10 };  // Phaser3日本語グリフ上端クリッピング対策
+    const st = { fontSize: '22px', fontStyle: 'bold', padding: pad };
     this.moneyText = this.add.text(20, 11, '', { ...st, color: COLORS.money }).setDepth(DEPTH.hud);
     this.livesText = this.add.text(210, 11, '', { ...st, color: COLORS.lives }).setDepth(DEPTH.hud);
     this.waveText = this.add.text(400, 11, '', { ...st, color: COLORS.text }).setDepth(DEPTH.hud);
 
     this.hintText = this.add.text(GAME_W / 2, GAME_H - 26,
       'スロット（＋）→タワー建設／タワーをクリック→強化・売却　右上＝速度・一時停止・音', {
-        fontSize: '17px', color: '#9fb3c8',
+        fontSize: '17px', color: '#9fb3c8', padding: pad,
       }).setOrigin(0.5).setDepth(DEPTH.hud);
 
     // 右側コントロール（速度・一時停止・ミュート）
@@ -125,7 +126,7 @@ export default class GameScene extends Phaser.Scene {
       .setStrokeStyle(2, 0x57c98a).setDepth(DEPTH.hud)
       .setInteractive({ useHandCursor: true });
     this.waveBtnText = this.add.text(GAME_W - 250, 23, '', {
-      fontSize: '18px', fontStyle: 'bold', color: '#ffffff',
+      fontSize: '18px', fontStyle: 'bold', color: '#ffffff', padding: pad,
     }).setOrigin(0.5).setDepth(DEPTH.hud);
     this.waveBtnRect.on('pointerover', () => this.waveBtnRect.setFillStyle(0x39A05f));
     this.waveBtnRect.on('pointerout', () => this.waveBtnRect.setFillStyle(0x2e7d4f));
@@ -139,7 +140,7 @@ export default class GameScene extends Phaser.Scene {
     const rect = this.add.rectangle(cx, 23, 32, 32, 0x2f3e52)
       .setStrokeStyle(2, 0x4a6076).setDepth(DEPTH.hud)
       .setInteractive({ useHandCursor: true });
-    const text = this.add.text(cx, 23, label, { fontSize: '16px', color: COLORS.text })
+    const text = this.add.text(cx, 23, label, { fontSize: '16px', color: COLORS.text, padding: { top: 8 } })
       .setOrigin(0.5).setDepth(DEPTH.hud);
     rect.on('pointerover', () => rect.setFillStyle(0x4a6076));
     rect.on('pointerout', () => rect.setFillStyle(0x2f3e52));
@@ -506,7 +507,7 @@ export default class GameScene extends Phaser.Scene {
       .setStrokeStyle(2, 0x4a6076).setDepth(DEPTH.panel));
     this.addPanelItem(this.add.text(x, y - 108, 'タワーを建てる', {
       fontSize: '18px', fontStyle: 'bold', color: COLORS.text,
-      padding: { top: 6, bottom: 2 },
+      padding: { top: 10, bottom: 2 },
     }).setOrigin(0.5).setDepth(DEPTH.panel));
 
     this.makeButton(x, y - 64, w - 24, 44, TOWERS.guard.color,
@@ -553,18 +554,18 @@ export default class GameScene extends Phaser.Scene {
       .setStrokeStyle(2, 0x4a6076).setDepth(DEPTH.panel));
     this.addPanelItem(this.add.text(x, y - 78, `${rankName}  Lv${tower.level}`, {
       fontSize: '18px', fontStyle: 'bold', color: COLORS.text,
-      padding: { top: 6, bottom: 2 },
+      padding: { top: 10, bottom: 2 },
     }).setOrigin(0.5).setDepth(DEPTH.panel));
     this.addPanelItem(this.add.text(x, y - 50,
       `射程 ${tower.range}  /  威力 ${tower.damage}${tower.splash > 0 ? `  /  範囲 ${tower.splash}` : ''}`, {
         fontSize: '14px', color: '#9fb3c8',
-        padding: { top: 4 },
+        padding: { top: 8 },
       }).setOrigin(0.5).setDepth(DEPTH.panel));
 
     if (maxed) {
       this.addPanelItem(this.add.text(x, y - 8, 'MAX レベル', {
         fontSize: '18px', fontStyle: 'bold', color: '#ffd866',
-        padding: { top: 6, bottom: 2 },
+        padding: { top: 10, bottom: 2 },
       }).setOrigin(0.5).setDepth(DEPTH.panel));
     } else {
       const upLabel = nextRank
@@ -594,14 +595,14 @@ export default class GameScene extends Phaser.Scene {
       .setStrokeStyle(2, 0x10161f, 0.6).setDepth(DEPTH.panel);
     const t1 = this.add.text(cx, cy - (sub ? 8 : 0), label, {
       fontSize: '16px', fontStyle: 'bold', color: enabled ? '#ffffff' : '#cfd8e3',
-      padding: { top: 6, bottom: 2 },
+      padding: { top: 10, bottom: 2 },
     }).setOrigin(0.5).setDepth(DEPTH.panel);
     this.addPanelItem(rect);
     this.addPanelItem(t1);
     if (sub) {
       this.addPanelItem(this.add.text(cx, cy + 12, sub, {
         fontSize: '12px', color: enabled ? '#e8f0f8' : '#9fb3c8',
-        padding: { top: 4 },
+        padding: { top: 8 },
       }).setOrigin(0.5).setDepth(DEPTH.panel));
     }
     if (enabled) {
