@@ -79,7 +79,7 @@ try {
     s.buildTower(s.spots[3], 'receptionist'); // cost 80 → 130
     return {
       money: s.money,
-      hasSniper: s.towers.some((t) => t.def.name === 'AIシステム'),
+      hasSniper: s.towers.some((t) => t.def.name === '警備員'),
       hasRecp: s.towers.some((t) => t.def.name === '受付嬢'),
     };
   });

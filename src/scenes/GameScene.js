@@ -326,6 +326,7 @@ export default class GameScene extends Phaser.Scene {
       key: towerKey, def, kind: def.kind, x: spot.x, y: spot.y,
       level: 1, range: def.range, damage: def.damage, splash: def.splash,
       fireRate: def.fireRate, cd: 0, invested: def.cost, base, barrel, lvText, spot,
+      shots: def.shots || 1,
     };
     spot.tower = tower;
     this.towers.push(tower);
@@ -368,6 +369,7 @@ export default class GameScene extends Phaser.Scene {
     tower.damage += tower.def.up.damage;
     tower.range += tower.def.up.range;
     tower.splash += tower.def.up.splash;
+    tower.shots += tower.def.up.shots || 0;
     tower.invested += cost;
     tower.lvText.setText(`Lv${tower.level}`);
     this.updateHud();
@@ -393,16 +395,31 @@ export default class GameScene extends Phaser.Scene {
     return best;
   }
 
+  findTargets(tower, count) {
+    const r2 = tower.range * tower.range;
+    const inRange = [];
+    for (const e of this.enemies) {
+      if (!e.alive) continue;
+      const dx = e.x - tower.x, dy = e.y - tower.y;
+      if (dx * dx + dy * dy <= r2) inRange.push(e);
+    }
+    inRange.sort((a, b) => b.dist - a.dist);
+    return inRange.slice(0, count);
+  }
+
   fireTower(tower, target) {
     const def = tower.def;
-    const go = this.add.circle(tower.x, tower.y - 14, tower.kind === 'splash' ? 7 : 5, def.projColor)
+    const lv = tower.level - 1;
+    const projColor = def.projColors ? def.projColors[lv] : (def.projColor || 0xffffff);
+    const projSize  = def.projSizes  ? def.projSizes[lv]  : (tower.kind === 'splash' ? 7 : 5);
+    const go = this.add.circle(tower.x, tower.y - 14, projSize, projColor)
       .setDepth(DEPTH.proj);
     this.projectiles.push({
       x: tower.x, y: tower.y - 14, target,
       speed: def.projSpeed, damage: tower.damage, splash: tower.splash,
       kind: def.kind,
       slowMult: def.slowMult || 1, slowDuration: def.slowDuration || 0,
-      color: def.projColor, life: 0, go,
+      color: projColor, life: 0, go,
     });
     // 砲身の発射リコイル（軽い演出）
     this.tweens.add({ targets: tower.barrel, scaleY: 0.7, duration: 60, yoyo: true });
@@ -499,13 +516,13 @@ export default class GameScene extends Phaser.Scene {
       () => this.buildTower(spot, 'guard'));
 
     this.makeButton(x, y - 12, w - 24, 44, TOWERS.soba.color,
-      `居酒屋おじ（範囲）  $${TOWERS.soba.cost}`,
-      `範囲攻撃 / 威力${TOWERS.soba.damage}`,
+      `ゆとり社員（書類範囲）  $${TOWERS.soba.cost}`,
+      `書類投げ / 範囲 / 威力${TOWERS.soba.damage}`,
       this.money >= TOWERS.soba.cost,
       () => this.buildTower(spot, 'soba'));
 
     this.makeButton(x, y + 40, w - 24, 44, TOWERS.sniper.color,
-      `AIシステム（遠距離）  $${TOWERS.sniper.cost}`,
+      `警備員（遠距離）  $${TOWERS.sniper.cost}`,
       `射程${TOWERS.sniper.range} / 威力${TOWERS.sniper.damage}`,
       this.money >= TOWERS.sniper.cost,
       () => this.buildTower(spot, 'sniper'));
@@ -690,9 +707,18 @@ export default class GameScene extends Phaser.Scene {
     for (const t of this.towers) {
       t.cd -= d;
       if (t.cd <= 0) {
-        const target = this.findTarget(t);
-        if (target) { this.fireTower(t, target); t.cd = t.fireRate; }
-        else t.cd = 0;
+        if (t.shots > 1) {
+          // 受付嬢など：同時に複数ターゲットへ発射
+          const targets = this.findTargets(t, t.shots);
+          if (targets.length > 0) {
+            for (const tgt of targets) this.fireTower(t, tgt);
+            t.cd = t.fireRate;
+          } else t.cd = 0;
+        } else {
+          const target = this.findTarget(t);
+          if (target) { this.fireTower(t, target); t.cd = t.fireRate; }
+          else t.cd = 0;
+        }
       }
     }
 
