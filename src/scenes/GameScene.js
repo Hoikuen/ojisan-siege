@@ -32,6 +32,8 @@ export default class GameScene extends Phaser.Scene {
     this.load.image('bg_jyutakugai', 'assets/backgrounds/jyutakugai.png');
     this.load.image('bg_shotengai', 'assets/backgrounds/shotengai.png');
     this.load.image('bg_officedistrict', 'assets/backgrounds/officedistrict.png');
+    this.load.image('bg_stage4', 'assets/backgrounds/stage4.png');
+    this.load.image('bg_stage5', 'assets/backgrounds/stage5.png');
   }
 
   create() {
@@ -435,7 +437,7 @@ export default class GameScene extends Phaser.Scene {
     this.updateHud();
     this.floatText(tower.x, tower.y - 24, 'UP!', '#9ad0ff', 18);
     Sfx.upgrade();
-    this.closePanel();
+    this.openTowerMenu(tower);   // パネルを再開して最新ステータスを表示
   }
 
   findTarget(tower) {
