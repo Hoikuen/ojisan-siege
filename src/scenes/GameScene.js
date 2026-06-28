@@ -403,6 +403,9 @@ export default class GameScene extends Phaser.Scene {
     tower.splash += tower.def.up.splash;
     tower.shots += tower.def.up.shots || 0;
     tower.invested += cost;
+    // Lv2=銀青・Lv3=金でレベルを視覚化
+    const LEVEL_TINTS = [0xffffff, 0x88ccff, 0xffcc00];
+    tower.sprite.setTint(LEVEL_TINTS[tower.level - 1] || 0xffcc00);
     this.updateHud();
     this.floatText(tower.x, tower.y - 24, 'UP!', '#9ad0ff', 18);
     Sfx.upgrade();
