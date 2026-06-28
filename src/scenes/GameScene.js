@@ -517,8 +517,8 @@ export default class GameScene extends Phaser.Scene {
       () => this.buildTower(spot, 'guard'));
 
     this.makeButton(x, y - 12, w - 24, 44, TOWERS.soba.color,
-      `ゆとり社員（書類範囲）  $${TOWERS.soba.cost}`,
-      `書類投げ / 範囲 / 威力${TOWERS.soba.damage}`,
+      `ゆとり社員  $${TOWERS.soba.cost}`,
+      `書類投げ（範囲） / 威力${TOWERS.soba.damage}`,
       this.money >= TOWERS.soba.cost,
       () => this.buildTower(spot, 'soba'));
 
