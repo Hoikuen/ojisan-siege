@@ -20,19 +20,26 @@ export const ENEMIES = {
 // up:強化1段の上昇量（cost＝強化費） — レベルが上がるたび damage/range/splash が増える
 export const TOWERS = {
   guard: {
-    name: '警備員', kind: 'single', color: 0x2f6fb0, projColor: 0xcfe6ff,
+    name: 'サラリーマン', levelNames: ['係長', '課長', '部長'],
+    kind: 'single', color: 0x2f6fb0, projColor: 0xcfe6ff,
     cost: 50, range: 122, damage: 4, fireRate: 520, projSpeed: 640, splash: 0,
     maxLevel: 3, up: { cost: 45, damage: 3, range: 16, splash: 0 },
   },
   soba: {
-    name: '立ち食いそば屋台', kind: 'splash', color: 0xd98a2b, projColor: 0xffd98a,
+    name: '居酒屋おじ', kind: 'splash', color: 0xd98a2b, projColor: 0xffd98a,
     cost: 75, range: 100, damage: 3, fireRate: 950, projSpeed: 460, splash: 70,
     maxLevel: 3, up: { cost: 60, damage: 2, range: 10, splash: 12 },
   },
   sniper: {
-    name: 'スナイパー', kind: 'single', color: 0x607d8b, projColor: 0xd0e8ff,
+    name: 'AIシステム', kind: 'single', color: 0x607d8b, projColor: 0xd0e8ff,
     cost: 90, range: 200, damage: 18, fireRate: 2000, projSpeed: 900, splash: 0,
     maxLevel: 3, up: { cost: 55, damage: 10, range: 18, splash: 0 },
+  },
+  receptionist: {
+    name: '受付嬢', kind: 'charm', color: 0xe87ac1, projColor: 0xff69b4,
+    cost: 80, range: 130, damage: 0, fireRate: 1400, projSpeed: 380, splash: 0,
+    maxLevel: 3, up: { cost: 50, damage: 0, range: 14, splash: 0 },
+    slowMult: 0.35, slowDuration: 2500,
   },
 };
 

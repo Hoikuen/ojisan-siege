@@ -71,14 +71,20 @@ try {
     econ.afterReject === 0 && econ.towersAfterReject === 2,
     `money=${econ.afterReject} towers=${econ.towersAfterReject}`);
 
-  // ── T1b: スナイパー建設コスト ──
+  // ── T1b: スナイパー・受付嬢建設コスト ──
   const snp = await page.evaluate(() => {
     const s = window.__game.scene.getScene('GameScene');
-    s.money = 200;
-    s.buildTower(s.spots[2], 'sniper'); // cost 90
-    return { money: s.money, ok: s.towers.some((t) => t.def.name === 'スナイパー') };
+    s.money = 300;
+    s.buildTower(s.spots[2], 'sniper');        // cost 90 → 210
+    s.buildTower(s.spots[3], 'receptionist'); // cost 80 → 130
+    return {
+      money: s.money,
+      hasSniper: s.towers.some((t) => t.def.name === 'AIシステム'),
+      hasRecp: s.towers.some((t) => t.def.name === '受付嬢'),
+    };
   });
-  check('スナイパー：建設コスト90・タワー追加', snp.money === 110 && snp.ok, `残金=${snp.money}`);
+  check('スナイパー＋受付嬢：建設コスト90+80・タワー追加',
+    snp.money === 130 && snp.hasSniper && snp.hasRecp, `残金=${snp.money}`);
 
   // ── T2: 強化 ──
   const up = await page.evaluate(() => {
@@ -277,7 +283,24 @@ try {
   check('マップ2へ遷移：mapIndex=1・盤面/ウェーブ再構築',
     m2.idx === 1 && m2.spots > 0 && m2.waves > 0 && m2.name.length > 0, `${m2.name} spots=${m2.spots} waves=${m2.waves}`);
 
-  // ── T9: ゾンビ分裂（死亡時 grunt×2 スポーン）──
+  // ── T9: 受付嬢スロー（charmEnemyでslowMult適用）──
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => {
+    const s = window.__game?.scene.getScene('GameScene'); return s?.spots?.length > 0;
+  }, { timeout: 10000 });
+  const charm = await page.evaluate(() => {
+    const s = window.__game.scene.getScene('GameScene');
+    s.spawnEnemy('grunt', 0);
+    const e = s.enemies[s.enemies.length - 1];
+    const normalSpeed = e.speed;
+    s.charmEnemy(e, { slowMult: 0.35, slowDuration: 2500 });
+    return { normalSpeed, slowMult: e.slowMult, timer: e.slowTimer, slowedLess: e.slowMult < 1 };
+  });
+  check('受付嬢：charmでslowMult<1・slowTimer設定',
+    charm.slowedLess && charm.timer > 0,
+    `slowMult=${charm.slowMult} timer=${charm.timer}`);
+
+  // ── T10: ゾンビ分裂（死亡時 grunt×2 スポーン）──
   await page.reload({ waitUntil: 'load' });
   await page.waitForFunction(() => {
     const s = window.__game?.scene.getScene('GameScene'); return s?.spots?.length > 0;

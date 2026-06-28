@@ -291,6 +291,14 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
+  charmEnemy(enemy, p) {
+    if (!enemy.alive) return;
+    enemy.slowMult = p.slowMult;
+    enemy.slowTimer = p.slowDuration;
+    enemy.body.setFillStyle(0xff69b4);
+    this.floatText(enemy.x, enemy.y - 14, '💕', '#ff69b4', 18);
+  }
+
   destroyEnemyGfx(enemy) {
     enemy.body.destroy();
     enemy.face.destroy();
@@ -392,6 +400,8 @@ export default class GameScene extends Phaser.Scene {
     this.projectiles.push({
       x: tower.x, y: tower.y - 14, target,
       speed: def.projSpeed, damage: tower.damage, splash: tower.splash,
+      kind: def.kind,
+      slowMult: def.slowMult || 1, slowDuration: def.slowDuration || 0,
       color: def.projColor, life: 0, go,
     });
     // 砲身の発射リコイル（軽い演出）
@@ -422,6 +432,7 @@ export default class GameScene extends Phaser.Scene {
       // 着弾
       p.x = target.x; p.y = target.y;
       if (p.splash > 0) this.explode(p);
+      else if (p.kind === 'charm') this.charmEnemy(target, p);
       else this.damageEnemy(target, p.damage);
       this.killProjectile(p);
       return;
@@ -472,31 +483,38 @@ export default class GameScene extends Phaser.Scene {
     this.showRangePreview(spot.x, spot.y, TOWERS.guard.range); // 目安として警備員射程
     const w = 240;
     const x = Phaser.Math.Clamp(spot.x, w / 2 + 10, GAME_W - w / 2 - 10);
-    const y = Phaser.Math.Clamp(spot.y < GAME_H / 2 ? spot.y + 120 : spot.y - 120, 135, GAME_H - 115);
+    const y = Phaser.Math.Clamp(spot.y < GAME_H / 2 ? spot.y + 130 : spot.y - 130, 145, GAME_H - 145);
     this.makeBackdrop();
-    this.addPanelItem(this.add.rectangle(x, y, w, 212, 0x16202c, 0.96)
+    this.addPanelItem(this.add.rectangle(x, y, w, 268, 0x16202c, 0.96)
       .setStrokeStyle(2, 0x4a6076).setDepth(DEPTH.panel));
-    this.addPanelItem(this.add.text(x, y - 84, 'タワーを建てる', {
+    this.addPanelItem(this.add.text(x, y - 108, 'タワーを建てる', {
       fontSize: '18px', fontStyle: 'bold', color: COLORS.text,
+      padding: { top: 6, bottom: 2 },
     }).setOrigin(0.5).setDepth(DEPTH.panel));
 
-    this.makeButton(x, y - 40, w - 24, 44, TOWERS.guard.color,
-      `警備員（単体）  $${TOWERS.guard.cost}`,
-      `射程${TOWERS.guard.range} / 威力${TOWERS.guard.damage}`,
+    this.makeButton(x, y - 64, w - 24, 44, TOWERS.guard.color,
+      `係長（単体）  $${TOWERS.guard.cost}`,
+      `射程${TOWERS.guard.range} / 威力${TOWERS.guard.damage} ／ 係長→部長`,
       this.money >= TOWERS.guard.cost,
       () => this.buildTower(spot, 'guard'));
 
-    this.makeButton(x, y + 16, w - 24, 44, TOWERS.soba.color,
-      `そば屋台（範囲）  $${TOWERS.soba.cost}`,
+    this.makeButton(x, y - 12, w - 24, 44, TOWERS.soba.color,
+      `居酒屋おじ（範囲）  $${TOWERS.soba.cost}`,
       `範囲攻撃 / 威力${TOWERS.soba.damage}`,
       this.money >= TOWERS.soba.cost,
       () => this.buildTower(spot, 'soba'));
 
-    this.makeButton(x, y + 72, w - 24, 44, TOWERS.sniper.color,
-      `スナイパー  $${TOWERS.sniper.cost}`,
+    this.makeButton(x, y + 40, w - 24, 44, TOWERS.sniper.color,
+      `AIシステム（遠距離）  $${TOWERS.sniper.cost}`,
       `射程${TOWERS.sniper.range} / 威力${TOWERS.sniper.damage}`,
       this.money >= TOWERS.sniper.cost,
       () => this.buildTower(spot, 'sniper'));
+
+    this.makeButton(x, y + 92, w - 24, 44, TOWERS.receptionist.color,
+      `受付嬢（混乱）  $${TOWERS.receptionist.cost}`,
+      `ハートでスロー / 射程${TOWERS.receptionist.range}`,
+      this.money >= TOWERS.receptionist.cost,
+      () => this.buildTower(spot, 'receptionist'));
   }
 
   openTowerMenu(tower) {
@@ -508,24 +526,35 @@ export default class GameScene extends Phaser.Scene {
     const maxed = tower.level >= tower.def.maxLevel;
     const cost = this.upgradeCostOf(tower);
 
+    const rankName = tower.def.levelNames
+      ? tower.def.levelNames[tower.level - 1]
+      : tower.def.name;
+    const nextRank = tower.def.levelNames ? tower.def.levelNames[tower.level] : null;
+
     this.makeBackdrop();
     this.addPanelItem(this.add.rectangle(x, y, w, 196, 0x16202c, 0.96)
       .setStrokeStyle(2, 0x4a6076).setDepth(DEPTH.panel));
-    this.addPanelItem(this.add.text(x, y - 78, `${tower.def.name}  Lv${tower.level}`, {
+    this.addPanelItem(this.add.text(x, y - 78, `${rankName}  Lv${tower.level}`, {
       fontSize: '18px', fontStyle: 'bold', color: COLORS.text,
+      padding: { top: 6, bottom: 2 },
     }).setOrigin(0.5).setDepth(DEPTH.panel));
     this.addPanelItem(this.add.text(x, y - 50,
       `射程 ${tower.range}  /  威力 ${tower.damage}${tower.splash > 0 ? `  /  範囲 ${tower.splash}` : ''}`, {
         fontSize: '14px', color: '#9fb3c8',
+        padding: { top: 4 },
       }).setOrigin(0.5).setDepth(DEPTH.panel));
 
     if (maxed) {
       this.addPanelItem(this.add.text(x, y - 8, 'MAX レベル', {
         fontSize: '18px', fontStyle: 'bold', color: '#ffd866',
+        padding: { top: 6, bottom: 2 },
       }).setOrigin(0.5).setDepth(DEPTH.panel));
     } else {
+      const upLabel = nextRank
+        ? `強化 → ${nextRank}  $${cost}`
+        : `強化 → Lv${tower.level + 1}   $${cost}`;
       this.makeButton(x, y - 6, w - 24, 44, 0x2f6fb0,
-        `強化 → Lv${tower.level + 1}   $${cost}`,
+        upLabel,
         `威力+${tower.def.up.damage} / 射程+${tower.def.up.range}`,
         this.money >= cost,
         () => this.upgradeTower(tower));
@@ -548,12 +577,14 @@ export default class GameScene extends Phaser.Scene {
       .setStrokeStyle(2, 0x10161f, 0.6).setDepth(DEPTH.panel);
     const t1 = this.add.text(cx, cy - (sub ? 8 : 0), label, {
       fontSize: '16px', fontStyle: 'bold', color: enabled ? '#ffffff' : '#cfd8e3',
+      padding: { top: 6, bottom: 2 },
     }).setOrigin(0.5).setDepth(DEPTH.panel);
     this.addPanelItem(rect);
     this.addPanelItem(t1);
     if (sub) {
       this.addPanelItem(this.add.text(cx, cy + 12, sub, {
         fontSize: '12px', color: enabled ? '#e8f0f8' : '#9fb3c8',
+        padding: { top: 4 },
       }).setOrigin(0.5).setDepth(DEPTH.panel));
     }
     if (enabled) {
@@ -630,7 +661,11 @@ export default class GameScene extends Phaser.Scene {
     // 2) 敵の移動・漏れ判定
     for (const e of this.enemies) {
       if (!e.alive) continue;
-      e.dist += e.speed * dt;
+      if (e.slowTimer > 0) {
+        e.slowTimer -= d;
+        if (e.slowTimer <= 0) { e.slowTimer = 0; e.slowMult = 1; e.body.setFillStyle(e.def.color); }
+      }
+      e.dist += e.speed * (e.slowMult || 1) * dt;
       if (e.dist >= this.path.total) {
         // ゴール到達＝ライフ減・撃破報酬なし
         e.alive = false;
