@@ -296,10 +296,20 @@ export default class GameScene extends Phaser.Scene {
     const hasSprite = SPRITE_TYPES.has(type);
     let body, face;
     const spriteScale = def.size / 40;
-    const barYOff = hasSprite ? (128 * spriteScale) / 2 + 5 : def.size / 2 + 9;
+
+    // 128pxスプライト内での頭・足元ピクセル位置（アルファ境界実測値）
+    const FOOT_PIX = { grunt: 113, runner: 104, brute: 127, boss: 115, subashikko: 114, zombie: 114 };
+    const HEAD_PIX = { grunt: 33,  runner: 34,  brute: 22,  boss: 13,  subashikko: 67,  zombie: 39  };
+    const SPRITE_H = 128;
+    const footPix = FOOT_PIX[type] ?? 114;
+    const headPix = HEAD_PIX[type] ?? 30;
+    // 足元をpath上のpos.yに揃えるオフセット（上方向が負）
+    const spriteYOff = hasSprite ? -((footPix - SPRITE_H / 2) * spriteScale) : 0;
+    // HPバーはキャラ頭の5px上
+    const barYOff = hasSprite ? (footPix - headPix) * spriteScale + 5 : def.size / 2 + 9;
 
     if (hasSprite) {
-      body = this.add.image(pos.x, pos.y, `${type}_walk_1`)
+      body = this.add.image(pos.x, pos.y + spriteYOff, `${type}_walk_1`)
         .setScale(spriteScale).setDepth(DEPTH.enemy);
       face = null;
     } else {
@@ -317,7 +327,7 @@ export default class GameScene extends Phaser.Scene {
     this.enemies.push({
       type, def, speed: def.speed, dist: startDist, hp: def.hp, maxHp: def.hp,
       x: pos.x, y: pos.y, alive: true, barW, body, face, hpBg, hpFill,
-      hasSprite, animTimer: 0, animFrame: 0, barYOff,
+      hasSprite, animTimer: 0, animFrame: 0, barYOff, spriteYOff,
     });
   }
 
@@ -766,7 +776,7 @@ export default class GameScene extends Phaser.Scene {
       }
       const pos = posAt(this.path, e.dist);
       e.x = pos.x; e.y = pos.y;
-      e.body.setPosition(pos.x, pos.y);
+      e.body.setPosition(pos.x, pos.y + (e.spriteYOff ?? 0));
       if (e.hasSprite) {
         // 歩きアニメ（8fps）
         e.animTimer += dt * 1000;

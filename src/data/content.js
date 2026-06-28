@@ -7,8 +7,8 @@
 export const ENEMIES = {
   grunt:      { name: 'チビおじ',       hp: 10,  speed: 88,  reward: 5,  leak: 1, size: 26, color: 0x5b8def },
   runner:     { name: 'いそぎおじ',     hp: 6,   speed: 185, reward: 4,  leak: 1, size: 20, color: 0x46c98b },
-  brute:      { name: 'ごりおじ',       hp: 50,  speed: 54,  reward: 16, leak: 3, size: 36, color: 0xc56b3a },
-  boss:       { name: 'ボスおじ',       hp: 400, speed: 40,  reward: 95, leak: 8, size: 52, color: 0xb05ad0 },
+  brute:      { name: 'ごりおじ',       hp: 50,  speed: 54,  reward: 16, leak: 3, size: 28, color: 0xc56b3a },
+  boss:       { name: 'ボスおじ',       hp: 400, speed: 40,  reward: 95, leak: 8, size: 32, color: 0xb05ad0 },
   subashikko: { name: 'すばしっこおじ', hp: 3,   speed: 270, reward: 3,  leak: 1, size: 18, color: 0x3de87a },
   zombie:     { name: 'ゾンビおじ',     hp: 30,  speed: 65,  reward: 10, leak: 2, size: 32, color: 0x7fbf4d, splits: true },
 };
