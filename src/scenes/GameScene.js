@@ -175,7 +175,8 @@ export default class GameScene extends Phaser.Scene {
   }
 
   toggleSpeed() {
-    this.gameSpeed = this.gameSpeed === 1 ? 2 : 1;
+    const steps = [1, 2, 3, 5];
+    this.gameSpeed = steps[(steps.indexOf(this.gameSpeed) + 1) % steps.length];
     this.speedBtn.text.setText(`${this.gameSpeed}x`);
   }
 
